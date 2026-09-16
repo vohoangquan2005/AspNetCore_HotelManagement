@@ -1,0 +1,16 @@
+﻿namespace HotelManagement.Models
+{
+    // DÙNG ĐỂ LƯU HÌNH ẢNH CỦA PHÒNG
+    public class RoomImage
+    {
+        public int RoomImageId { get; set; }
+        public int RoomId { get; set; }
+        public string? ImageUrl { get; set; }
+        public int IsPrimary { get; set; }      // Ảnh chính 1 <Yes> 0 <No>
+        public int DisplayOrder { get; set; }   // Thứ tự hiển thị
+        public DateTime? CreateAt { get; set; }
+        public DateTime? UpdateAt { get; set; }
+        //Relationship
+        public Room? Room { get; set; }
+    }
+}
