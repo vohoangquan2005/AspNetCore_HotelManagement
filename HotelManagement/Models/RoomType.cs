@@ -1,4 +1,6 @@
-﻿namespace HotelManagement.Models
+﻿using HotelManagement.Enums;
+
+namespace HotelManagement.Models
 {
     // DÙNG ĐỂ LƯU LOẠI PHÒNG
     public class RoomType
@@ -9,6 +11,7 @@
         public string? BedType { get; set; }
         public string? Size { get; set; }           // Kích thước dài x rộng
         public string? Description { get; set; }
+        public ActiveEnums IsDeleted { get; set; } // Dùng để xóa tạm
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
         //Relationship

@@ -41,6 +41,16 @@ namespace HotelManagement.Controllers
             if (updateRole is null) return NotFound();
             return NoContent();
         }
+        [HttpPatch("soft-delete/{id}")]
+        public async Task<IActionResult> SoftDelete(int id)
+        {
+            var deleteRole = await _roleService.SoftDeleteAsync(id);
+
+            if (deleteRole is null)
+                return NotFound();
+
+            return NoContent();
+        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

@@ -27,7 +27,7 @@ namespace HotelManagement.Data.Configuration
             builder.Property(cp => cp.Description)
                    .HasMaxLength(500);
             // Status
-            builder.Property(cp => cp.Status)
+            builder.Property(cp => cp.IsDeleted)
                    .IsRequired();
             // CreateAt
             builder.Property(cp => cp.CreateAt)

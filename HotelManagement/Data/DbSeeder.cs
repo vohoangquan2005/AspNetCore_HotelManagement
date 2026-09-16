@@ -190,7 +190,7 @@ namespace HotelManagement.Data
                         UnitPrice = 10000,
                         Unit = "Chai",
                         Description = "Nước suối đóng chai.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new Service
                     {
@@ -198,7 +198,7 @@ namespace HotelManagement.Data
                         UnitPrice = 15000,
                         Unit = "Lon",
                         Description = "Các loại nước ngọt đóng lon.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new Service
                     {
@@ -206,7 +206,7 @@ namespace HotelManagement.Data
                         UnitPrice = 50000,
                         Unit = "Kg",
                         Description = "Dịch vụ giặt và ủi quần áo.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new Service
                     {
@@ -214,7 +214,7 @@ namespace HotelManagement.Data
                         UnitPrice = 80000,
                         Unit = "Suất",
                         Description = "Suất ăn sáng tại khách sạn.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new Service
                     {
@@ -222,7 +222,7 @@ namespace HotelManagement.Data
                         UnitPrice = 150000,
                         Unit = "Ngày",
                         Description = "Dịch vụ cho thuê xe máy.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new Service
                     {
@@ -230,7 +230,7 @@ namespace HotelManagement.Data
                         UnitPrice = 300000,
                         Unit = "Chuyến",
                         Description = "Dịch vụ đưa đón khách từ sân bay.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     }
                 };
                 context.Services.AddRange(services);
@@ -246,28 +246,28 @@ namespace HotelManagement.Data
                         PackageName = "Gói ăn sáng",
                         PackagePrice = 150000,
                         Description = "Bao gồm bữa sáng cho khách trong thời gian lưu trú.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new ServicePackage
                     {
                         PackageName = "Gói tiện ích",
                         PackagePrice = 250000,
                         Description = "Bao gồm nước suối, nước ngọt và ăn sáng.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new ServicePackage
                     {
                         PackageName = "Gói gia đình",
                         PackagePrice = 400000,
                         Description = "Bao gồm ăn sáng, nước uống và một số tiện ích dành cho gia đình.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new ServicePackage
                     {
                         PackageName = "Gói cao cấp",
                         PackagePrice = 600000,
                         Description = "Bao gồm ăn sáng, nước uống, giặt ủi và dịch vụ đưa đón.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     }
                 };
                 context.ServicePackages.AddRange(servicePackages);
@@ -329,7 +329,7 @@ namespace HotelManagement.Data
                         CancellationHours = 168,
                         RefundPercentage = 100m,
                         Description = "Hủy trước thời điểm nhận phòng từ 7 ngày trở lên được hoàn 100% tiền cọc.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new CancellationPolicy
                     {
@@ -337,7 +337,7 @@ namespace HotelManagement.Data
                         CancellationHours = 72,
                         RefundPercentage = 70m,
                         Description = "Hủy trước thời điểm nhận phòng từ 3 đến dưới 7 ngày được hoàn 70% tiền cọc.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new CancellationPolicy
                     {
@@ -345,7 +345,7 @@ namespace HotelManagement.Data
                         CancellationHours = 24,
                         RefundPercentage = 50m,
                         Description = "Hủy trước thời điểm nhận phòng từ 24 giờ đến dưới 3 ngày được hoàn 50% tiền cọc.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     },
                     new CancellationPolicy
                     {
@@ -353,7 +353,7 @@ namespace HotelManagement.Data
                         CancellationHours = 0,
                         RefundPercentage = 0m,
                         Description = "Hủy trong vòng 24 giờ trước thời điểm nhận phòng không được hoàn tiền cọc.",
-                        Status = ActiveEnums.Active
+                        IsDeleted = ActiveEnums.Active
                     }
                 };
                 context.CancellationPolicies.AddRange(policies);

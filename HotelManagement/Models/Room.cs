@@ -13,6 +13,7 @@ namespace HotelManagement.Models
         public decimal? PricePerNight { get; set; }// Tiền phòng 1 đêm
         public string? Description { get; set; }
         public RoomEnums Status { get; set; }
+        public ActiveEnums IsDeleted { get; set; } // Dùng để xóa tạm
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
         //Relationship

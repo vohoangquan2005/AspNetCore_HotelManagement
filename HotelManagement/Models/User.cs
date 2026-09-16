@@ -9,11 +9,12 @@ namespace HotelManagement.Models
         public string? Email { get; set; }
         public string? HashPassword { get; set; }
         public int RoleId { get; set; }
-        public UserEnums IsLocked {get; set; }         // Khóa tài khoản: 0<hoạt động> 1 <khóa>
+        public ActiveEnums IsLocked {get; set; }         // Active or Inactive
         public string? Gender { get; set; }     // Giới tính
         public DateTime? DateOfBirth { get; set; } // Ngày sinh
         public string? PhoneNumber { get; set; }      // Số điện thoại
         public string? Avatar { get; set; }     // Ảnh đại diện
+        public ActiveEnums IsDeleted { get; set; }  // Người dùng có bị xóa không(Dùng để xóa tạm)
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
         // Relation ship
