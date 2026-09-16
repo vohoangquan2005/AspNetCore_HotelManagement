@@ -1,4 +1,5 @@
 using HotelManagement.Data;
+using HotelManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,8 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 // Services
+builder.Services.AddScoped<RoleService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -33,5 +36,12 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Seeder
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    DbSeeder.Seed(context);
+}
 
 app.Run();
