@@ -1,0 +1,54 @@
+﻿using HotelManagement.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace HotelManagement.Data.Configuration
+{
+    public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
+    {
+        public void Configure(EntityTypeBuilder<Payment> builder)
+        {
+            // Table
+            builder.ToTable("Payments");
+            // Primary Key
+            builder.HasKey(p => p.PaymentId);
+            // InvoiceId
+            builder.Property(p => p.InvoiceId)
+                   .IsRequired();
+            // Amount
+            builder.Property(p => p.Amount)
+                   .IsRequired()
+                   .HasPrecision(18, 2);
+            // PaymentType
+            builder.Property(p => p.PaymentType)
+                   .HasMaxLength(30);
+            // PaymentMethod
+            builder.Property(p => p.PaymentMethod)
+                   .HasMaxLength(30);
+            // TransactionCode
+            builder.Property(p => p.TransactionCode)
+                   .HasMaxLength(100);
+            // Status
+            builder.Property(p => p.Status)
+                   .IsRequired();
+            // CreatedByUserId
+            builder.Property(p => p.CreatedByUserId);
+            // PaymentDate
+            builder.Property(p => p.PaymentDate);
+            // CreateAt
+            builder.Property(p => p.CreateAt)
+                   .HasDefaultValueSql("GETDATE()");
+            // Relationships
+            // Invoice 1 - N Payment
+            builder.HasOne(p => p.Invoice)
+                   .WithMany(i => i.Payments)
+                   .HasForeignKey(p => p.InvoiceId)
+                   .OnDelete(DeleteBehavior.Cascade);
+            // User 1 - N Payment
+            builder.HasOne(p => p.CreatedByUser)
+                   .WithMany(u => u.CreatedPayments)
+                   .HasForeignKey(p => p.CreatedByUserId)
+                   .OnDelete(DeleteBehavior.SetNull);
+        }
+    }
+}
