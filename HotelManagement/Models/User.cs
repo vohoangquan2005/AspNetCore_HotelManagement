@@ -9,7 +9,7 @@ namespace HotelManagement.Models
         public string? Email { get; set; }
         public string? HashPassword { get; set; }
         public int RoleId { get; set; }
-        public ActiveEnums IsLocked {get; set; }         // Active or Inactive
+        public ActiveEnums IsLocked {get; set; }    // Active or Inactive
         public string? Gender { get; set; }     // Giới tính
         public DateTime? DateOfBirth { get; set; } // Ngày sinh
         public string? PhoneNumber { get; set; }      // Số điện thoại

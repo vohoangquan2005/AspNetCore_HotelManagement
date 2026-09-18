@@ -1,4 +1,5 @@
-﻿using HotelManagement.Models;
+﻿using HotelManagement.Enums;
+using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -32,7 +33,9 @@ namespace HotelManagement.Data.Configuration
                    .HasPrecision(18, 2);
             // Status
             builder.Property(c => c.Status)
-                   .IsRequired();
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasDefaultValue(CancellationEnums.Pending);
             // CreateAt
             builder.Property(c => c.CreateAt)
                    .HasDefaultValueSql("GETDATE()");

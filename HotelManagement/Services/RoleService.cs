@@ -29,18 +29,34 @@ namespace HotelManagement.Services
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
-        // Get all
+        // Get all InActive(Lấy roles còn hoạt động)
         public async Task<List<RoleResponseDto>> GetAllAsync()
         {
-            var roles = await _context.Roles.Select(r => new RoleResponseDto
-            {
-                RoleId = r.RoleId,
-                RoleName = r.RoleName,
-                Description = r.Description,
-                IsDeleted = r.IsDeleted,
-                CreateAt = r.CreateAt,
-                UpdateAt = r.UpdateAt
-            }).ToListAsync();
+            var roles = await _context.Roles.Where(r => r.IsDeleted == ActiveEnums.Active)
+                                        .Select(r => new RoleResponseDto
+                                        {
+                                            RoleId = r.RoleId,
+                                            RoleName = r.RoleName,
+                                            Description = r.Description,
+                                            IsDeleted = r.IsDeleted,
+                                            CreateAt = r.CreateAt,
+                                            UpdateAt = r.UpdateAt
+                                        }).ToListAsync();
+            return roles;
+        }
+        // Get all InActive(Lấy roles không hoạt động)
+        public async Task<List<RoleResponseDto>> GetDeletedAsync()
+        {
+            var roles = await _context.Roles.Where(r => r.IsDeleted == ActiveEnums.Inactive)
+                                        .Select(r => new RoleResponseDto
+                                        {
+                                            RoleId = r.RoleId,
+                                            RoleName = r.RoleName,
+                                            Description = r.Description,
+                                            IsDeleted = r.IsDeleted,
+                                            CreateAt = r.CreateAt,
+                                            UpdateAt = r.UpdateAt
+                                        }).ToListAsync();
             return roles;
         }
         // Get by Id
@@ -92,8 +108,7 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<RoleResponseDto?> RestoreAsync(int id)
         {
-            var role = await _context.Roles.IgnoreQueryFilters()
-                                           .FirstOrDefaultAsync(r => r.RoleId == id);
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == id);
             if (role is null) return null;
             role.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

@@ -13,10 +13,16 @@ namespace HotelManagement.Controllers
         {
             _userService = userService;
         }
-        [HttpGet]
+        [HttpGet]   // Lấy danh sách user đang hoạt động (Action)
         public async Task<IActionResult> GetAll()
         {
             var users = await _userService.GetAllAsync();
+            return Ok(users);
+        }
+        [HttpGet("deleted")]    // Lấy danh sách user đã xóa (Inaction)
+        public async Task<IActionResult> GetDeleted()
+        {
+            var users = await _userService.GetDeletedAsync();
             return Ok(users);
         }
         [HttpGet("{id}")]

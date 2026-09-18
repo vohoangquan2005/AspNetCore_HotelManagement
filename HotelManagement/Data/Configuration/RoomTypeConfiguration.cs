@@ -1,4 +1,5 @@
-﻿using HotelManagement.Models;
+﻿using HotelManagement.Enums;
+using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -26,6 +27,11 @@ namespace HotelManagement.Data.Configuration
                    .IsRequired();
             builder.HasIndex(r => r.RoomTypeName)
                    .IsUnique();
+            // IsDeleted
+            builder.Property(r => r.IsDeleted)
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasDefaultValue(ActiveEnums.Active);
             // CreateAt
             builder.Property(r => r.CreateAt)
                    .HasDefaultValueSql("GETDATE()");

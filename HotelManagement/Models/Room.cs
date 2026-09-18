@@ -10,7 +10,7 @@ namespace HotelManagement.Models
         public int RoomTypeId { get; set; }
         public int Capacity { get; set; }       // Sức chứa
         public string? Location { get; set; }   // Vị trí: Tầng a khu b
-        public decimal? PricePerNight { get; set; }// Tiền phòng 1 đêm
+        public decimal PricePerNight { get; set; }// Tiền phòng 1 đêm
         public string? Description { get; set; }
         public RoomEnums Status { get; set; }
         public ActiveEnums IsDeleted { get; set; } // Dùng để xóa tạm

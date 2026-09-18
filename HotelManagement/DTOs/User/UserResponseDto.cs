@@ -8,11 +8,12 @@ namespace HotelManagement.DTOs.User
         public string? FullName { get; set; }
         public string? Email { get; set; }
         public int RoleId { get; set; }
-        public ActiveEnums IsLocked { get; set; }         // Khóa tài khoản: 0<hoạt động> 1 <khóa>
+        public ActiveEnums IsLocked { get; set; }   // Active or Inactive
         public string? Gender { get; set; }     // Giới tính
         public DateTime? DateOfBirth { get; set; } // Ngày sinh
         public string? PhoneNumber { get; set; }      // Số điện thoại
         public string? Avatar { get; set; }     // Ảnh đại diện
+        public ActiveEnums IsDeleted { get; set; }
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
     }

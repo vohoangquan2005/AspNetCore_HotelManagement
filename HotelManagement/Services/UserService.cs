@@ -28,6 +28,7 @@ namespace HotelManagement.Services
                 DateOfBirth = user.DateOfBirth,
                 PhoneNumber = user.PhoneNumber,
                 Avatar = user.Avatar,
+                IsDeleted = user.IsDeleted,
                 CreateAt = user.CreateAt,
                 UpdateAt = user.UpdateAt
             };
@@ -87,27 +88,50 @@ namespace HotelManagement.Services
             {
                 throw new BadRequestException("Ngày sinh không được lớn hơn ngày hiện tại!");
             }
-        }    
+        }
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
-        // Get all
+        // Get all InActive(Lấy users còn hoạt động)
         public async Task<List<UserResponseDto>> GetAllAsync()
         {
-            var users = await _context.Users.Select(u => new UserResponseDto
-            {
-                UserId = u.UserId,
-                FullName = u.FullName,
-                Email = u.Email,
-                RoleId = u.RoleId,
-                IsLocked = u.IsLocked,
-                Gender = u.Gender,
-                DateOfBirth = u.DateOfBirth,
-                PhoneNumber = u.PhoneNumber,
-                Avatar = u.Avatar,
-                CreateAt = u.CreateAt,
-                UpdateAt = u.UpdateAt
-            }).ToListAsync();
+            var users = await _context.Users.Where(u => u.IsDeleted == ActiveEnums.Active)
+                                            .Select(u => new UserResponseDto
+                                            {
+                                                UserId = u.UserId,
+                                                FullName = u.FullName,
+                                                Email = u.Email,
+                                                RoleId = u.RoleId,
+                                                IsLocked = u.IsLocked,
+                                                Gender = u.Gender,
+                                                DateOfBirth = u.DateOfBirth,
+                                                PhoneNumber = u.PhoneNumber,
+                                                Avatar = u.Avatar,
+                                                IsDeleted = u.IsDeleted,
+                                                CreateAt = u.CreateAt,
+                                                UpdateAt = u.UpdateAt
+                                            }).ToListAsync();
+            return users;
+        }
+        // Get all InActive(Lấy users không hoạt động)
+        public async Task<List<UserResponseDto>> GetDeletedAsync()
+        {
+            var users = await _context.Users.Where(u => u.IsDeleted == ActiveEnums.Inactive)
+                                            .Select(u => new UserResponseDto
+                                            {
+                                                UserId = u.UserId,
+                                                FullName = u.FullName,
+                                                Email = u.Email,
+                                                RoleId = u.RoleId,
+                                                IsLocked = u.IsLocked,
+                                                Gender = u.Gender,
+                                                DateOfBirth = u.DateOfBirth,
+                                                PhoneNumber = u.PhoneNumber,
+                                                Avatar = u.Avatar,
+                                                IsDeleted = u.IsDeleted,
+                                                CreateAt = u.CreateAt,
+                                                UpdateAt = u.UpdateAt
+                                            }).ToListAsync();
             return users;
         }
         // Get by Id
@@ -169,8 +193,7 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<UserResponseDto?> RestoreAsync(int id)
         {
-            var user = await _context.Users.IgnoreQueryFilters()
-                                           .FirstOrDefaultAsync(u => u.UserId == id);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == id);
             if (user is null) return null;
             user.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

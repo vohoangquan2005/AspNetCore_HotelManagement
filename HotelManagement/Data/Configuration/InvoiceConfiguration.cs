@@ -1,4 +1,5 @@
-﻿using HotelManagement.Models;
+﻿using HotelManagement.Enums;
+using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,7 +34,9 @@ namespace HotelManagement.Data.Configuration
                    .HasPrecision(18, 2);
             // Status
             builder.Property(i => i.Status)
-                   .IsRequired();
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasDefaultValue(InvoiceEnums.Unpaid);
             // CreatedByUserId
             builder.Property(i => i.CreatedByUserId);
             // CreateAt
