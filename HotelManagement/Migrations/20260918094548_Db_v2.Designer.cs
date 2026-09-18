@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HotelManagement.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260918041241_Db_v1")]
-    partial class Db_v1
+    [Migration("20260918094548_Db_v2")]
+    partial class Db_v2
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -164,8 +164,11 @@ namespace HotelManagement.Migrations
                     b.Property<int?>("ServicePackageId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Pending");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
@@ -302,8 +305,11 @@ namespace HotelManagement.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Pending");
 
                     b.Property<DateTime?>("UpdateAt")
                         .ValueGeneratedOnAdd()
@@ -520,8 +526,11 @@ namespace HotelManagement.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Unpaid");
 
                     b.Property<decimal>("SubTotal")
                         .HasPrecision(18, 2)
@@ -574,8 +583,11 @@ namespace HotelManagement.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Pending");
 
                     b.Property<string>("TransactionCode")
                         .HasMaxLength(100)
@@ -612,8 +624,11 @@ namespace HotelManagement.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("IsDeleted")
-                        .HasColumnType("int");
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<decimal?>("MaxDisCountAmount")
                         .HasPrecision(18, 2)
@@ -688,8 +703,11 @@ namespace HotelManagement.Migrations
                     b.Property<int>("RoomId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Pending");
 
                     b.HasKey("ReviewId");
 
@@ -719,8 +737,11 @@ namespace HotelManagement.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<int>("IsDeleted")
-                        .HasColumnType("int");
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<string>("RoleName")
                         .IsRequired()
@@ -759,8 +780,11 @@ namespace HotelManagement.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("IsDeleted")
-                        .HasColumnType("int");
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<string>("Location")
                         .HasMaxLength(100)
@@ -778,8 +802,11 @@ namespace HotelManagement.Migrations
                     b.Property<int>("RoomTypeId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Available");
 
                     b.Property<DateTime?>("UpdateAt")
                         .ValueGeneratedOnAdd()
@@ -859,8 +886,11 @@ namespace HotelManagement.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("IsDeleted")
-                        .HasColumnType("int");
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<string>("RoomTypeName")
                         .IsRequired()
@@ -900,8 +930,11 @@ namespace HotelManagement.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("IsDeleted")
-                        .HasColumnType("int");
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<string>("ServiceName")
                         .IsRequired()
@@ -944,8 +977,11 @@ namespace HotelManagement.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("IsDeleted")
-                        .HasColumnType("int");
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<string>("PackageName")
                         .IsRequired()
@@ -1005,11 +1041,17 @@ namespace HotelManagement.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<int>("IsDeleted")
-                        .HasColumnType("int");
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
-                    b.Property<int>("IsLocked")
-                        .HasColumnType("int");
+                    b.Property<string>("IsLocked")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(15)

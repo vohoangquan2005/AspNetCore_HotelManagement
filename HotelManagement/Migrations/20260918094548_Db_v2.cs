@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace HotelManagement.Migrations
 {
     /// <inheritdoc />
-    public partial class Db_v1 : Migration
+    public partial class Db_v2 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -45,7 +45,7 @@ namespace HotelManagement.Migrations
                     UsedCount = table.Column<int>(type: "int", nullable: true, defaultValue: 0),
                     StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    IsDeleted = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -62,7 +62,7 @@ namespace HotelManagement.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     RoleName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    IsDeleted = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -82,7 +82,7 @@ namespace HotelManagement.Migrations
                     BedType = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Size = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IsDeleted = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -100,7 +100,7 @@ namespace HotelManagement.Migrations
                     PackageName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     PackagePrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    IsDeleted = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -119,7 +119,7 @@ namespace HotelManagement.Migrations
                     UnitPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    IsDeleted = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -138,12 +138,12 @@ namespace HotelManagement.Migrations
                     Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     HashPassword = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     RoleId = table.Column<int>(type: "int", nullable: false),
-                    IsLocked = table.Column<int>(type: "int", nullable: false),
+                    IsLocked = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     Gender = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: true),
                     PhoneNumber = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
                     Avatar = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    IsDeleted = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -198,8 +198,8 @@ namespace HotelManagement.Migrations
                     Location = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     PricePerNight = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    IsDeleted = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Available"),
+                    IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -307,7 +307,7 @@ namespace HotelManagement.Migrations
                     AdditionalServiceAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     TotalAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Note = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Pending"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -434,7 +434,7 @@ namespace HotelManagement.Migrations
                     Reason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     RefundPercentage = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
                     RefundAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Pending"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()"),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -466,7 +466,7 @@ namespace HotelManagement.Migrations
                     TaxAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     DiscountAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     AmountDue = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Unpaid"),
                     CreatedByUserId = table.Column<int>(type: "int", nullable: true),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
@@ -498,7 +498,7 @@ namespace HotelManagement.Migrations
                     BookingId = table.Column<int>(type: "int", nullable: false),
                     Rating = table.Column<int>(type: "int", nullable: false),
                     Comment = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Pending"),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
                 },
                 constraints: table =>
@@ -564,7 +564,7 @@ namespace HotelManagement.Migrations
                     PaymentType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true),
                     PaymentMethod = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true),
                     TransactionCode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Pending"),
                     CreatedByUserId = table.Column<int>(type: "int", nullable: true),
                     PaymentDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")

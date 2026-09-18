@@ -92,7 +92,7 @@ namespace HotelManagement.Services
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
-        // Get all InActive(Lấy users còn hoạt động)
+        // Get all Active(Lấy users còn hoạt động)
         public async Task<List<UserResponseDto>> GetAllAsync()
         {
             var users = await _context.Users.Where(u => u.IsDeleted == ActiveEnums.Active)
@@ -145,7 +145,7 @@ namespace HotelManagement.Services
         public async Task<UserResponseDto> CreateAsync(UserCreateDto dto)
         {
             if (!await RoleIdExistsAsync(dto.RoleId))
-                throw new NotFoundException("Role không tồn tại!");
+                throw new NotFoundException("Vai trò không tồn tại!");
             if (await EmailExistsAsync(dto.Email!)) // ! dùng để chắc chắn rằng email không null cho compiler đừng cảnh báo
                 throw new ConflictException("Email đã tồn tại!");
             if (await PhoneNumberExistsAsync(dto.PhoneNumber))

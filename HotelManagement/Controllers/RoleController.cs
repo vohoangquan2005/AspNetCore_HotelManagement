@@ -13,13 +13,13 @@ namespace HotelManagement.Controllers
         {
             _roleService = roleService;
         }
-        [HttpGet]   // Lấy danh sách Role đang hoạt động (Action)
+        [HttpGet]   // Lấy danh sách Role đang hoạt động (Active)
         public async Task<IActionResult> GetAll()
         {
             var roles = await _roleService.GetAllAsync();
             return Ok(roles);
         }
-        [HttpGet("deleted")]    // Lấy danh sách Role đã bị xóa (Inaction)
+        [HttpGet("deleted")]    // Lấy danh sách Role đã bị xóa (Inactive)
         public async Task<IActionResult> GetDeleted()
         {
             var roles = await _roleService.GetDeletedAsync();

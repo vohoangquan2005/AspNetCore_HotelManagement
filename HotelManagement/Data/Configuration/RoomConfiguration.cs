@@ -20,11 +20,11 @@ namespace HotelManagement.Data.Configuration
             builder.Property(r => r.RoomName)
                    .IsRequired()
                    .HasMaxLength(50);
+            builder.HasIndex(r => r.RoomName)
+                   .IsUnique();
             // Capacity
             builder.Property(r => r.Capacity)
                    .IsRequired();
-            builder.HasIndex(r => r.RoomName)
-                    .IsUnique();
             // Location
             builder.Property(r => r.Location)
                    .HasMaxLength(100);

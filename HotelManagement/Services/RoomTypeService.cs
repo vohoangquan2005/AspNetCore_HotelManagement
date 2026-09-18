@@ -16,7 +16,7 @@ namespace HotelManagement.Services
             _context = context;
         }
         // Chuyển Room Type -> RooTypeResponseDto
-        private RoomTypeResponseDto MapToRoomTypeResponseDto(RoomType roomType)
+        private RoomTypeResponseDto MapToResponseDto(RoomType roomType)
         {
             return new RoomTypeResponseDto
             {
@@ -104,7 +104,7 @@ namespace HotelManagement.Services
         {
             var roomType = await _context.RoomTypes.FindAsync(id);
             if (roomType is null) return null;
-            return MapToRoomTypeResponseDto(roomType);
+            return MapToResponseDto(roomType);
         }
         // Create
         public async Task<RoomTypeResponseDto> CreateAsync(RoomTypeCreateDto dto)
@@ -114,7 +114,7 @@ namespace HotelManagement.Services
             var roomType = MapToEntity(dto);
             await _context.RoomTypes.AddAsync(roomType);
             await _context.SaveChangesAsync();
-            return MapToRoomTypeResponseDto(roomType);
+            return MapToResponseDto(roomType);
         }
         // Update 
         public async Task<RoomTypeResponseDto?> UpdateAsync(int id, RoomTypeUpdateDto dto)
@@ -125,7 +125,7 @@ namespace HotelManagement.Services
                 throw new ConflictException("Tên loại phòng đã tồn tại!");
             UpdateEntity(roomType, dto);
             await _context.SaveChangesAsync();
-            return MapToRoomTypeResponseDto(roomType);
+            return MapToResponseDto(roomType);
         }
         // Delete
         public async Task<RoomTypeResponseDto?> DeleteAsync(int id)
@@ -134,7 +134,7 @@ namespace HotelManagement.Services
             if (roomType is null) return null;
             _context.RoomTypes.Remove(roomType);
             await _context.SaveChangesAsync();
-            return MapToRoomTypeResponseDto(roomType);
+            return MapToResponseDto(roomType);
         }
         // Xóa tạm
         public async Task<RoomTypeResponseDto?> SoftDeleteAsync(int id)
@@ -143,7 +143,7 @@ namespace HotelManagement.Services
             if (roomType is null) return null;
             roomType.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
-            return MapToRoomTypeResponseDto(roomType);
+            return MapToResponseDto(roomType);
         }
         // Khôi phục
         public async Task<RoomTypeResponseDto?> RestoreAsync(int id)
@@ -152,7 +152,7 @@ namespace HotelManagement.Services
             if (roomType is null) return null;
             roomType.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
-            return MapToRoomTypeResponseDto(roomType);
+            return MapToResponseDto(roomType);
         }
     }
 }

@@ -14,13 +14,13 @@ namespace HotelManagement.Controllers
         {
             _roomTypeService = roomTypeService;
         }
-        [HttpGet]   // Lấy danh sách roomtype đang hoạt động (Action)
+        [HttpGet]   // Lấy danh sách roomtype đang hoạt động (Active)
         public async Task<IActionResult> GetAll()
         {
             var roomTypes = await _roomTypeService.GetAllAsync();
             return Ok(roomTypes);
         }
-        [HttpGet("deleted")]    // Lấy danh sách roomtype đã xóa (Inaction)
+        [HttpGet("deleted")]    // Lấy danh sách roomtype đã xóa (Inactive)
         public async Task<IActionResult> GetDeleted()
         {
             var roomTypes = await _roomTypeService.GetDeletedAsync();

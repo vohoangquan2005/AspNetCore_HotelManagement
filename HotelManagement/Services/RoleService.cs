@@ -29,7 +29,7 @@ namespace HotelManagement.Services
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
-        // Get all InActive(Lấy roles còn hoạt động)
+        // Get all Active(Lấy roles còn hoạt động)
         public async Task<List<RoleResponseDto>> GetAllAsync()
         {
             var roles = await _context.Roles.Where(r => r.IsDeleted == ActiveEnums.Active)

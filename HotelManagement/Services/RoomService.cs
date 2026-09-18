@@ -1,0 +1,173 @@
+﻿using HotelManagement.Data;
+using HotelManagement.DTOs.Room;
+using HotelManagement.Enums;
+using HotelManagement.Exceptions;
+using HotelManagement.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagement.Services
+{
+    public class RoomService
+    {
+        private readonly AppDbContext _context;
+        public RoomService (AppDbContext context)
+        {
+            _context = context;
+        }
+        // Chuyển Room -> RoomResponseDto
+        private RoomResponseDto MapToResponseDto(Room room)
+        {
+            return new RoomResponseDto
+            {
+                RoomId = room.RoomId,
+                RoomName = room.RoomName,
+                RoomTypeId = room.RoomTypeId,
+                Capacity = room.Capacity,
+                Location = room.Location,
+                PricePerNight = room.PricePerNight,
+                Description = room.Description,
+                Status = room.Status,
+                IsDeleted = room.IsDeleted,
+                CreateAt = room.CreateAt,
+                UpdateAt = room.UpdateAt
+            };
+        }
+        // Chuyển RoomCreateDto -> Room
+        private Room MapToEntity(RoomCreateDto dto)
+        {
+            return new Room
+            {
+                RoomName = dto.RoomName,
+                RoomTypeId = dto.RoomTypeId,
+                Capacity = dto.Capacity,
+                Location = dto.Location,
+                PricePerNight = dto.PricePerNight,
+                Description = dto.Description
+            };
+        }
+        // Cập nhật Room từ RoomUpdateDto
+        private void UpdateEntity(Room room, RoomUpdateDto dto)
+        {
+            room.RoomName = dto.RoomName;
+            room.RoomTypeId = dto.RoomTypeId;
+            room.Capacity = dto.Capacity;
+            room.Location = dto.Location;
+            room.PricePerNight = dto.PricePerNight;
+            room.Description = dto.Description;
+        }
+        // Check trùng room name
+        private async Task<bool> RoomNameExists(string roomName, int? RoomId = null) 
+        {
+            return await _context.Rooms.AnyAsync(r => r.RoomName == roomName
+                                                   && (RoomId == null || RoomId != r.RoomId));
+        }
+        // Check RoomTypeId đã tồn tại chưa?
+        private async Task<bool> RoomTypeIdExists(int roomTypeId) 
+        {
+            return await _context.RoomTypes.AnyAsync(r => r.RoomTypeId == roomTypeId);
+        }
+        // ===========================================================
+        // =                           CRUD                          =
+        // ===========================================================
+        // Get all Active(Lấy room còn hoạt động)
+        public async Task<List<RoomResponseDto>> GetAllAsync()
+        {
+            var rooms = await _context.Rooms.Where(r => r.IsDeleted == ActiveEnums.Active)
+                                            .Select(r => new RoomResponseDto
+                                            {
+                                                RoomId = r.RoomId,
+                                                RoomName = r.RoomName,
+                                                RoomTypeId = r.RoomTypeId,
+                                                Capacity = r.Capacity,
+                                                Location = r.Location,
+                                                PricePerNight = r.PricePerNight,
+                                                Description = r.Description,
+                                                Status = r.Status,
+                                                IsDeleted = r.IsDeleted,
+                                                CreateAt = r.CreateAt,
+                                                UpdateAt = r.UpdateAt
+                                            }).ToListAsync();
+            return rooms;
+        }
+        // Get all InActive(Lấy room không hoạt động)
+        public async Task<List<RoomResponseDto>> GetDeletedAsync()
+        {
+            var rooms = await _context.Rooms.Where(r => r.IsDeleted == ActiveEnums.Inactive)
+                                            .Select(r => new RoomResponseDto
+                                            {
+                                                RoomId = r.RoomId,
+                                                RoomName = r.RoomName,
+                                                RoomTypeId = r.RoomTypeId,
+                                                Capacity = r.Capacity,
+                                                Location = r.Location,
+                                                PricePerNight = r.PricePerNight,
+                                                Description = r.Description,
+                                                Status = r.Status,
+                                                IsDeleted = r.IsDeleted,
+                                                CreateAt = r.CreateAt,
+                                                UpdateAt = r.UpdateAt
+                                            }).ToListAsync();
+            return rooms;
+        }
+        // Get by Id
+        public async Task<RoomResponseDto?> GetByIdAsync(int id)
+        {
+            var room = await _context.Rooms.FindAsync(id);
+            if (room is null) return null;
+            return MapToResponseDto(room);
+        }
+        // Create 
+        public async Task<RoomResponseDto> CreateAsync(RoomCreateDto dto)
+        {
+            if (await RoomNameExists(dto.RoomName!))
+                throw new ConflictException("Tên phòng đã tồn tại!");
+            if (!await RoomTypeIdExists(dto.RoomTypeId))
+                throw new NotFoundException("Loại phòng không tồn tại!");
+            var room = MapToEntity(dto);
+            await _context.Rooms.AddAsync(room);
+            await _context.SaveChangesAsync();
+            return MapToResponseDto(room);
+        }
+        // Update
+        public async Task<RoomResponseDto?> UpdateAsync(int id, RoomUpdateDto dto)
+        {
+            var room = await _context.Rooms.FindAsync(id);
+            if (room is null) return null;
+            if (await RoomNameExists(dto.RoomName!, id))
+                throw new ConflictException("Tên phòng đã tồn tại!");
+            if (!await RoomTypeIdExists(dto.RoomTypeId))
+                throw new NotFoundException("Loại phòng không tồn tại!");
+            UpdateEntity(room, dto);
+            await _context.SaveChangesAsync();
+            return MapToResponseDto(room);
+        }
+        // Delete
+        public async Task<RoomResponseDto?> DeleteAsync(int id)
+        {
+            var room = await _context.Rooms.FindAsync(id);
+            if (room is null) return null;
+            _context.Rooms.Remove(room);
+            await _context.SaveChangesAsync();
+            return MapToResponseDto(room);
+        }
+        // Xóa tạm
+        public async Task<RoomResponseDto?> SoftDeleteAsync(int id)
+        {
+            var room = await _context.Rooms.FindAsync(id);
+            if (room is null) return null;
+            room.IsDeleted = ActiveEnums.Inactive;
+            await _context.SaveChangesAsync();
+            return MapToResponseDto(room);
+        }
+        // Khôi phục (Restore)
+        public async Task<RoomResponseDto?> RestoreAsync(int id)
+        {
+            var room = await _context.Rooms.FirstOrDefaultAsync(r => r.RoomId == id);
+            if (room is null) return null;
+            room.IsDeleted = ActiveEnums.Active;
+            await _context.SaveChangesAsync();
+            return MapToResponseDto(room);
+        }
+
+    }
+}
