@@ -56,10 +56,10 @@ namespace HotelManagement.Services
             room.Description = dto.Description;
         }
         // Check trùng room name
-        private async Task<bool> RoomNameExists(string roomName, int? RoomId = null) 
+        private async Task<bool> RoomNameExists(string roomName, int? roomId = null) 
         {
             return await _context.Rooms.AnyAsync(r => r.RoomName == roomName
-                                                   && (RoomId == null || RoomId != r.RoomId));
+                                                   && (roomId == null || roomId != r.RoomId));
         }
         // Check RoomTypeId đã tồn tại chưa?
         private async Task<bool> RoomTypeIdExists(int roomTypeId) 
