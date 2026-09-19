@@ -16,14 +16,14 @@ namespace HotelManagement.Controllers
         [HttpGet]   // Lấy danh sách promotion đang hoạt động (Active)
         public async Task<IActionResult> GetAll()
         {
-            var promotion = await _promotionService.GetAllAsync();
-            return Ok(promotion);
+            var promotions = await _promotionService.GetAllAsync();
+            return Ok(promotions);
         }
         [HttpGet("deleted")]    // Lấy danh sách promotion đã xóa (Inactive)
         public async Task<IActionResult> GetDeleted()
         {
-            var promotion = await _promotionService.GetDeletedAsync();
-            return Ok(promotion);
+            var promotions = await _promotionService.GetDeletedAsync();
+            return Ok(promotions);
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)

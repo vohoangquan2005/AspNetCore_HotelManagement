@@ -7,7 +7,7 @@ namespace HotelManagement.Data
     {
         public static void Seed(AppDbContext context)
         {
-            // ROLE
+// =============================================== ROLE ===============================================
             if (!context.Roles.Any())
             {
                 var roles = new List<Role>
@@ -31,7 +31,7 @@ namespace HotelManagement.Data
                 context.Roles.AddRange(roles);
                 context.SaveChanges();
             }
-            // ROOM TYPE
+// =============================================== ROOM TYPE ===============================================
             if (!context.RoomTypes.Any())
             {
                 var roomTypes = new List<RoomType>
@@ -44,7 +44,6 @@ namespace HotelManagement.Data
                         Size = "5m x 4m",
                         Description = "Phòng tiêu chuẩn dành cho 1-2 người."
                     },
-
                     new RoomType
                     {
                         RoomTypeName = "Deluxe",
@@ -53,7 +52,6 @@ namespace HotelManagement.Data
                         Size = "6m x 5m",
                         Description = "Phòng Deluxe rộng rãi, phù hợp cho 2 người."
                     },
-
                     new RoomType
                     {
                         RoomTypeName = "Family",
@@ -62,7 +60,6 @@ namespace HotelManagement.Data
                         Size = "8m x 6m",
                         Description = "Phòng gia đình dành cho tối đa 4 người."
                     },
-
                     new RoomType
                     {
                         RoomTypeName = "Suite",
@@ -75,21 +72,17 @@ namespace HotelManagement.Data
                 context.RoomTypes.AddRange(roomTypes);
                 context.SaveChanges();
             }
-            // ROOM 
+// =============================================== ROOM ===============================================
             if (!context.Rooms.Any())
             {
                 var standard = context.RoomTypes
                     .First(rt => rt.RoomTypeName == "Standard");
-
                 var deluxe = context.RoomTypes
                     .First(rt => rt.RoomTypeName == "Deluxe");
-
                 var family = context.RoomTypes
                     .First(rt => rt.RoomTypeName == "Family");
-
                 var suite = context.RoomTypes
                     .First(rt => rt.RoomTypeName == "Suite");
-
                 var rooms = new List<Room>
                 {
                     // Standard
@@ -103,7 +96,6 @@ namespace HotelManagement.Data
                         Description = "Phòng Standard tầng 1.",
                         Status = RoomEnums.Available
                     },
-
                     new Room
                     {
                         RoomName = "102",
@@ -114,7 +106,6 @@ namespace HotelManagement.Data
                         Description = "Phòng Standard tầng 1.",
                         Status = RoomEnums.Available
                     },
-
                     // Deluxe
                     new Room
                     {
@@ -126,7 +117,6 @@ namespace HotelManagement.Data
                         Description = "Phòng Deluxe tầng 2.",
                         Status = RoomEnums.Available
                     },
-
                     new Room
                     {
                         RoomName = "202",
@@ -137,7 +127,6 @@ namespace HotelManagement.Data
                         Description = "Phòng Deluxe tầng 2.",
                         Status = RoomEnums.Available
                     },
-
                     // Family
                     new Room
                     {
@@ -149,7 +138,6 @@ namespace HotelManagement.Data
                         Description = "Phòng Family dành cho gia đình.",
                         Status = RoomEnums.Available
                     },
-
                     new Room
                     {
                         RoomName = "302",
@@ -160,7 +148,6 @@ namespace HotelManagement.Data
                         Description = "Phòng Family dành cho gia đình.",
                         Status = RoomEnums.Available
                     },
-
                     // Suite
                     new Room
                     {
@@ -177,9 +164,9 @@ namespace HotelManagement.Data
                 context.Rooms.AddRange(rooms);
                 context.SaveChanges();
             }
-            // ROOM IMAGES
+// =============================================== ROOM IMAGES ===============================================
 
-            // SERVICE
+// ===============================================SERVICE ===============================================
             if (!context.Services.Any())
             {
                 var services = new List<Service>
@@ -236,7 +223,7 @@ namespace HotelManagement.Data
                 context.Services.AddRange(services);
                 context.SaveChanges();
             }
-            // SERVICE PACKAGE
+// =============================================== SERVICE PACKAGE ===============================================
             if (!context.ServicePackages.Any())
             {
                 var servicePackages = new List<ServicePackage>
@@ -273,7 +260,7 @@ namespace HotelManagement.Data
                 context.ServicePackages.AddRange(servicePackages);
                 context.SaveChanges();
             }
-            // PROMOTION
+// =============================================== PROMOTION ===============================================
             if (!context.Promotions.Any())
             {
                 var promotions = new List<Promotion>
@@ -318,7 +305,75 @@ namespace HotelManagement.Data
                 context.Promotions.AddRange(promotions);
                 context.SaveChanges();
             }
-            // CANCELLATION POLICY
+// =============================================== APPLY PROMOTION ===============================================
+            if (!context.ApplyPromotions.Any())
+            {
+                var welcome10 = context.Promotions
+                    .First(p => p.PromotionCode == "WELCOME10");
+                var summer15 = context.Promotions
+                    .First(p => p.PromotionCode == "SUMMER15");
+                var vip20 = context.Promotions
+                    .First(p => p.PromotionCode == "VIP20");
+                var standard = context.RoomTypes
+                    .First(rt => rt.RoomTypeName == "Standard");
+                var deluxe = context.RoomTypes
+                    .First(rt => rt.RoomTypeName == "Deluxe");
+                var family = context.RoomTypes
+                    .First(rt => rt.RoomTypeName == "Family");
+                var suite = context.RoomTypes
+                    .First(rt => rt.RoomTypeName == "Suite");
+
+                var applyPromotions = new List<ApplyPromotion>
+                {
+                    // WELCOME10
+                    new ApplyPromotion
+                    {
+                        PromotionId = welcome10.PromotionId,
+                        RoomTypeId = standard.RoomTypeId
+                    },
+                    new ApplyPromotion
+                    {
+                        PromotionId = welcome10.PromotionId,
+                        RoomTypeId = deluxe.RoomTypeId
+                    },
+                    new ApplyPromotion
+                    {
+                        PromotionId = welcome10.PromotionId,
+                        RoomTypeId = family.RoomTypeId
+                    },
+                    // SUMMER15
+                    new ApplyPromotion
+                    {
+                        PromotionId = summer15.PromotionId,
+                        RoomTypeId = deluxe.RoomTypeId
+                    },
+                    new ApplyPromotion
+                    {
+                        PromotionId = summer15.PromotionId,
+                        RoomTypeId = family.RoomTypeId
+                    },
+                    new ApplyPromotion
+                    {
+                        PromotionId = summer15.PromotionId,
+                        RoomTypeId = suite.RoomTypeId
+                    },
+                    // VIP20
+                    new ApplyPromotion
+                    {
+                        PromotionId = vip20.PromotionId,
+                        RoomTypeId = family.RoomTypeId
+                    },
+                    new ApplyPromotion
+                    {
+                        PromotionId = vip20.PromotionId,
+                        RoomTypeId = suite.RoomTypeId
+                    }
+                };
+                context.ApplyPromotions.AddRange(applyPromotions);
+                context.SaveChanges();
+            }
+
+// =============================================== CANCELLATION POLICY ===============================================
             if (!context.CancellationPolicies.Any())
             {
                 var policies = new List<CancellationPolicy>
