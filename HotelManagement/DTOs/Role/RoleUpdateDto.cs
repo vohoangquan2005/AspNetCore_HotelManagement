@@ -6,8 +6,8 @@ namespace HotelManagement.DTOs.Role
     {
         [StringLength(50, MinimumLength = 1)]
         [Required(ErrorMessage = "Vui lòng nhập tên vai trò!")]
-            public string? RoleName { get; set; }
+        public string? RoleName { get; set; }
         [StringLength(255)]
-            public string? Description { get; set; }
+        public string? Description { get; set; }
     }
 }

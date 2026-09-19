@@ -26,6 +26,7 @@ builder.Services.AddScoped<RoomTypeService>();
 builder.Services.AddScoped<RoomService>();
 builder.Services.AddScoped<ServiceService>();
 builder.Services.AddScoped<ServicePackageService>();
+builder.Services.AddScoped<PromotionService>();
 
 var app = builder.Build();
 

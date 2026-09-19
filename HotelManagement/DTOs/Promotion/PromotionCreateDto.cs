@@ -1,0 +1,29 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace HotelManagement.DTOs.Promotion
+{
+    public class PromotionCreateDto
+    {
+        [Required(ErrorMessage = "Vui lòng nhập mã khuyến mãi!")]
+        [StringLength(50)]
+        public string? PromotionCode { get; set; }  // Mã khuyến mãi
+        [Required(ErrorMessage = "Vui lòng nhập tên khuyến mãi!")]
+        [StringLength(100)]
+        public string? PromotionName { get; set; }
+        [Required(ErrorMessage = "Vui lòng nhập phần trăm khuyến mãi!")]
+        [Range(0, 100, ErrorMessage = "Phần trăm khuyến mãi phải từ 0 đến 100!")]
+        public decimal? DiscountValue { get; set; } = 0;  // Giá trị giảm (%)
+        [Range(0, double.MaxValue, ErrorMessage = "Số tiền tối thiểu không được âm!")]
+        public decimal? MinAmount { get; set; } = 0;// Giá tiền tối thiểu mà khách hàng phải sử dụng để có thể áp dụng khuyến mãi
+        [Range(0, double.MaxValue, ErrorMessage = "Số tiền giảm tối đa không được âm!")]
+        public decimal? MaxDisCountAmount { get; set; } // Giá tiền tối đa được giảm
+        [Range(0, int.MaxValue, ErrorMessage = "Giới hạn sử dụng không được âm!")]
+        public int? UsageLimit { get; set; }    // Giới hạn số lượng áp dụng khuyến mãi
+        [Range(0, int.MaxValue, ErrorMessage = "Số lượng đã sử dụng không được âm!")]
+        public int? UsedCount { get; set; } // Số lượng đã sử dụng
+        [Required(ErrorMessage = "Vui lòng nhập thời gian bắt đầu áp dụng khuyến mãi!")]
+        public DateTime StartDate { get; set; } // Ngày bắt đầu áp dụng
+        [Required(ErrorMessage = "Vui lòng nhập thời gian bắt đầu áp dụng khuyến mãi!")]
+        public DateTime EndDate { get; set; }   // Ngày kết thúc 
+    }
+}

@@ -19,7 +19,7 @@ namespace HotelManagement.Controllers
             var package = await _servicePackageService.GetAllAsync();
             return Ok(package);
         }
-        [HttpGet("deleted")]    // Lấy danh sách service đã xóa (Inactive)
+        [HttpGet("deleted")]    // Lấy danh sách service package đã xóa (Inactive)
         public async Task<IActionResult> GetDeleted()
         {
             var package = await _servicePackageService.GetDeletedAsync();
