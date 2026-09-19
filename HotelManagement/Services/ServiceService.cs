@@ -74,7 +74,7 @@ namespace HotelManagement.Services
                                             }).ToListAsync();
             return services;
         }
-        // Get all InActive(Lấy room không hoạt động)
+        // Get all InActive(Lấy service không hoạt động)
         public async Task<List<ServiceResponseDto>> GetDeletedAsync()
         {
             var services = await _context.Services.Where(s => s.IsDeleted == ActiveEnums.Inactive)
