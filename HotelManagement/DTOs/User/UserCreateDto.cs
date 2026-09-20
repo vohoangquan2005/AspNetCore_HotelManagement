@@ -5,11 +5,11 @@ namespace HotelManagement.DTOs.User
 {
     public class UserCreateDto
     {
-        [StringLength(50, MinimumLength = 1)]
+        [StringLength(50, ErrorMessage = "Tên người dùng không vượt quá 50 ký tự!")]
         [Required(ErrorMessage = "Vui lòng nhập tên người dùng!")]
         public string? FullName { get; set; }
         [EmailAddress]
-        [StringLength(50, MinimumLength = 1)]
+        [StringLength(50, ErrorMessage = "Email không vượt quá 50 ký tự!")]
         [Required(ErrorMessage = "Vui lòng nhập email!")]
         public string? Email { get; set; }
         public string? HashPassword { get; set; }

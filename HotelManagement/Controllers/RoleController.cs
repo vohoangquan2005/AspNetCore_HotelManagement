@@ -57,6 +57,14 @@ namespace HotelManagement.Controllers
 
             return NoContent();
         }
+        [HttpPatch("restore/{id}")]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var restoreRole = await _roleService.RestoreAsync(id);
+            if (restoreRole is null)
+                return NotFound();
+            return NoContent();
+        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

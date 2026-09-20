@@ -51,8 +51,15 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> SoftDelete(int id)
         {
             var deletePromotion = await _promotionService.SoftDeleteAsync(id);
-
             if (deletePromotion is null)
+                return NotFound();
+            return NoContent();
+        }
+        [HttpPatch("restore/{id}")]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var restorePromotion = await _promotionService.RestoreAsync(id);
+            if (restorePromotion is null)
                 return NotFound();
             return NoContent();
         }

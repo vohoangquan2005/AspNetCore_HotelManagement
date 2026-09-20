@@ -1,4 +1,5 @@
-﻿using HotelManagement.Models;
+﻿using HotelManagement.Enums;
+using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -26,9 +27,11 @@ namespace HotelManagement.Data.Configuration
             // Description
             builder.Property(cp => cp.Description)
                    .HasMaxLength(500);
-            // Status
+            // Isdeleted
             builder.Property(cp => cp.IsDeleted)
-                   .IsRequired();
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasDefaultValue(ActiveEnums.Active);
             // CreateAt
             builder.Property(cp => cp.CreateAt)
                    .HasDefaultValueSql("GETDATE()");
