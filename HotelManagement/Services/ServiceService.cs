@@ -49,10 +49,13 @@ namespace HotelManagement.Services
             service.Description = dto.Description;
         }
         // Check trùng ServiceName
-        private async Task<bool> ServiceNameExists(string serviceName, int? serviceId = null)
+        private async Task ServiceNameExists(string serviceName, int? serviceId = null)
         {
-            return await _context.Services.AnyAsync(s => s.ServiceName == serviceName
+            var exists = await _context.Services.AnyAsync(s => s.ServiceName == serviceName
                                                   && (serviceId == null || serviceId != s.ServiceId));
+            if (exists)
+                throw new ConflictException("Tên dịch vụ đã tồn tại!");
+
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -101,8 +104,7 @@ namespace HotelManagement.Services
         // Create 
         public async Task<ServiceResponseDto> CreateAsync(ServiceCreateDto dto)
         {
-            if (await ServiceNameExists(dto.ServiceName!))
-                throw new ConflictException("Tên dịch vụ đã tồn tại!");
+            await ServiceNameExists(dto.ServiceName!);
             var service = MapToEntity(dto);
             await _context.Services.AddAsync(service);
             await _context.SaveChangesAsync();
@@ -113,8 +115,7 @@ namespace HotelManagement.Services
         {
             var service = await _context.Services.FindAsync(id);
             if (service is null) return null;
-            if (await ServiceNameExists(dto.ServiceName!, id))
-                throw new ConflictException("Tên dịch vụ đã tồn tại!");
+            await ServiceNameExists(dto.ServiceName!, id);
             UpdateEntity(service, dto);
             await _context.SaveChangesAsync();
             return MapToResponseDto(service);
@@ -140,7 +141,7 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<ServiceResponseDto?> RestoreAsync(int id)
         {
-            var service = await _context.Services.FirstOrDefaultAsync(s => s.ServiceId == id);
+            var service = await _context.Services.FindAsync(id);
             if (service is null) return null;
             service.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

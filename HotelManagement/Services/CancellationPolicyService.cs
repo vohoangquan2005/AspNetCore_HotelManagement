@@ -50,10 +50,12 @@ namespace HotelManagement.Services
         }
 
         // Check trùng tên chính sách
-        private async Task<bool> PolicyNameExists(string policyName, int? cancellationPolicyId = null)
+        private async Task PolicyNameExists(string policyName, int? cancellationPolicyId = null)
         {
-            return await _context.CancellationPolicies.AnyAsync(cp => cp.PolicyName == policyName
+            var exists = await _context.CancellationPolicies.AnyAsync(cp => cp.PolicyName == policyName
                                                 && (cancellationPolicyId == null || cancellationPolicyId != cp.CancellationPolicyId));
+            if (exists)
+                throw new ConflictException("Tên chính sách đã tồn tại!");
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -102,8 +104,7 @@ namespace HotelManagement.Services
         // Create
         public async Task<CancellationPolicyResponseDto> CreateAsync(CancellationPolicyCreateDto dto)
         {
-            if (await PolicyNameExists(dto.PolicyName!))
-                throw new ConflictException("Tên chính sách đã tồn tại!");
+            await PolicyNameExists(dto.PolicyName!);
             var policy = MapToEntity(dto);
             await _context.CancellationPolicies.AddAsync(policy);
             await _context.SaveChangesAsync();
@@ -114,8 +115,7 @@ namespace HotelManagement.Services
         {
             var policy = await _context.CancellationPolicies.FindAsync(id);
             if (policy is null) return null;
-            if (await PolicyNameExists(dto.PolicyName!, id))
-                throw new ConflictException("Tên chính sách đã tồn tại!");
+            await PolicyNameExists(dto.PolicyName!, id);
             UpdateEntity(policy, dto);
             await _context.SaveChangesAsync();
             return MapToResponseDto(policy);

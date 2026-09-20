@@ -69,7 +69,7 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var deleteRoomType = await _roomTypeService.DeleteAsync(id);
-            if (deleteRoomType is null) return NotFound();
+            if (!deleteRoomType) return NotFound();
             return NoContent();
         }
     }

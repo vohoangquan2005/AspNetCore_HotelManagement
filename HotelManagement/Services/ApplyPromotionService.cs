@@ -46,20 +46,26 @@ namespace HotelManagement.Services
             applyPromotion.RoomTypeId = dto.RoomTypeId;
         }
         // Check PromotionId có tồn tại trong bảng Promotion không?
-        private async Task<bool> CheckPromotionId(int promotionId)
+        private async Task CheckPromotionId(int promotionId)
         {
-            return await _context.Promotions.AnyAsync(p => p.PromotionId == promotionId);
+            var exists = await _context.Promotions.AnyAsync(p => p.PromotionId == promotionId);
+            if (!exists)
+                throw new NotFoundException("Mã khuyến mãi không tồn tại!");
         }
         // Check RoomTypeId có tồn tại trong bảng RoomType không?
-        private async Task<bool> CheckRoomTypeId(int roomTypeId)
+        private async Task CheckRoomTypeId(int roomTypeId)
         {
-            return await _context.RoomTypes.AnyAsync(a => a.RoomTypeId == roomTypeId);
+            var exists = await _context.RoomTypes.AnyAsync(a => a.RoomTypeId == roomTypeId);
+            if (!exists)
+                throw new NotFoundException("Loại phòng không tồn tại!");
         }
         // Check khuyến mãi PromotionId đã áp dụng cho loại phòng RoomTypeId chưa?
-        private async Task<bool> CheckApply(int promotionId, int roomTypeId, int? applyPromotionId = null)
+        private async Task CheckApply(int promotionId, int roomTypeId, int? applyPromotionId = null)
         {
-            return await _context.ApplyPromotions.AnyAsync(a => a.PromotionId == promotionId && a.RoomTypeId == roomTypeId
+            var exists = await _context.ApplyPromotions.AnyAsync(a => a.PromotionId == promotionId && a.RoomTypeId == roomTypeId
                                                              && (applyPromotionId == null || applyPromotionId != a.ApplyPromotionId));
+            if (exists)
+                throw new ConflictException("Khuyến mãi đã được áp dụng cho loại phòng này. Không thể áp dụng tiếp!");
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -92,12 +98,9 @@ namespace HotelManagement.Services
         // Create 
         public async Task<ApplyPromotionResponseDto> CreateAsync(ApplyPromotionCreateDto dto)
         {
-            if (!await CheckPromotionId(dto.PromotionId))
-                throw new NotFoundException("Mã khuyến mãi không tồn tại!");
-            if (!await CheckRoomTypeId(dto.RoomTypeId))
-                throw new NotFoundException("Loại phòng không tồn tại!");
-            if (await CheckApply(dto.PromotionId, dto.RoomTypeId))
-                throw new ConflictException("Khuyến mãi đã được áp dụng cho loại phòng này. Không thể áp dụng tiếp!");
+            await CheckPromotionId(dto.PromotionId);
+            await CheckRoomTypeId(dto.RoomTypeId);
+            await CheckApply(dto.PromotionId, dto.RoomTypeId);
             var apply = MapToEntity(dto);
             await _context.ApplyPromotions.AddAsync(apply);
             await _context.SaveChangesAsync();
@@ -108,12 +111,9 @@ namespace HotelManagement.Services
         {
             var apply = await _context.ApplyPromotions.FindAsync(id);
             if (apply is null) return null;
-            if (!await CheckPromotionId(dto.PromotionId))
-                throw new NotFoundException("Mã khuyến mãi không tồn tại!");
-            if (!await CheckRoomTypeId(dto.RoomTypeId))
-                throw new NotFoundException("Loại phòng không tồn tại!");
-            if (await CheckApply(dto.PromotionId, dto.RoomTypeId, id))
-                throw new ConflictException("Khuyến mãi đã được áp dụng cho loại phòng này. Không thể áp dụng tiếp!");
+            await CheckPromotionId(dto.PromotionId);
+            await CheckRoomTypeId(dto.RoomTypeId);
+            await CheckApply(dto.PromotionId, dto.RoomTypeId, id);
             UpdateEntity(apply, dto);
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);

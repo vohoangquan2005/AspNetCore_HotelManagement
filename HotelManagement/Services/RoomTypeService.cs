@@ -53,10 +53,12 @@ namespace HotelManagement.Services
             roomType.Description = dto.Description;
         }
         // Check trùng tên loại phòng
-        private async Task<bool> RoomTypeNameExists(string roomTypeName, int? roomTypeId = null)
+        private async Task RoomTypeNameExists(string roomTypeName, int? roomTypeId = null)
         {
-            return await _context.RoomTypes.AnyAsync(rt => rt.RoomTypeName == roomTypeName
+            var exists = await _context.RoomTypes.AnyAsync(rt => rt.RoomTypeName == roomTypeName
                                                         && (roomTypeId == null || rt.RoomTypeId != roomTypeId));
+            if (exists)
+                throw new ConflictException("Tên loại phòng đã tồn tại!");
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -109,8 +111,7 @@ namespace HotelManagement.Services
         // Create
         public async Task<RoomTypeResponseDto> CreateAsync(RoomTypeCreateDto dto)
         {
-            if (await RoomTypeNameExists(dto.RoomTypeName!))
-                throw new ConflictException("Tên loại phòng đã tồn tại!");
+            await RoomTypeNameExists(dto.RoomTypeName!);
             var roomType = MapToEntity(dto);
             await _context.RoomTypes.AddAsync(roomType);
             await _context.SaveChangesAsync();
@@ -121,8 +122,7 @@ namespace HotelManagement.Services
         {
             var roomType = await _context.RoomTypes.FindAsync(id);
             if (roomType is null) return null;
-            if (await RoomTypeNameExists(dto.RoomTypeName!, id))
-                throw new ConflictException("Tên loại phòng đã tồn tại!");
+            await RoomTypeNameExists(dto.RoomTypeName!, id);
             UpdateEntity(roomType, dto);
             await _context.SaveChangesAsync();
             return MapToResponseDto(roomType);
@@ -148,7 +148,7 @@ namespace HotelManagement.Services
         // Khôi phục
         public async Task<RoomTypeResponseDto?> RestoreAsync(int id)
         {
-            var roomType = await _context.RoomTypes.FirstOrDefaultAsync(rt => rt.RoomTypeId == id);
+            var roomType = await _context.RoomTypes.FindAsync(id);
             if (roomType is null) return null;
             roomType.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

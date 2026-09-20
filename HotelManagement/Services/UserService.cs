@@ -63,24 +63,30 @@ namespace HotelManagement.Services
             user.Avatar = dto.Avatar;
         }
         // Check RoleId đã được tạo trong bảng Roles chưa?
-        private async Task<bool> CheckRoleId(int roleId)
+        private async Task CheckRoleId(int roleId)
         {
-            return await _context.Roles.AnyAsync(r => r.RoleId == roleId);
+            var exists = await _context.Roles.AnyAsync(r => r.RoleId == roleId);
+            if (!exists)
+                throw new NotFoundException("Vai trò không tồn tại!");
         }
         // Check trùng Email
-        private async Task<bool> EmailExists(string email, int? userId = null)
+        private async Task EmailExists(string email, int? userId = null)
         {
-            return await _context.Users.AnyAsync(u => u.Email == email
+            var exists = await _context.Users.AnyAsync(u => u.Email == email
                                                     &&(userId == null || u.UserId != userId));
             // userId == null để check khi create User
             // u.userId = userId để check khi update User
+            if (exists)
+                throw new ConflictException("Email đã tồn tại!");
         }
         // Check trùng Số điện thoại
-        private async Task<bool> PhoneNumberExists(string? phoneNumber, int? userId = null)
+        private async Task PhoneNumberExists(string? phoneNumber, int? userId = null)
         {
-            if (string.IsNullOrWhiteSpace(phoneNumber))  return false;
-            return await _context.Users.AnyAsync(u => u.PhoneNumber == phoneNumber
+            if (string.IsNullOrWhiteSpace(phoneNumber)) return;
+            var exists = await _context.Users.AnyAsync(u => u.PhoneNumber == phoneNumber
                                                     &&(userId == null || u.UserId != userId));
+            if (exists)
+                throw new ConflictException("Số điện thoại đã tồn tại");
         }
         // Check ngày sinh
         private void CheckDateOfBirth(DateTime? dateOfBirth)
@@ -148,12 +154,9 @@ namespace HotelManagement.Services
         // Create
         public async Task<UserResponseDto> CreateAsync(UserCreateDto dto)
         {
-            if (!await CheckRoleId(dto.RoleId))
-                throw new NotFoundException("Vai trò không tồn tại!");
-            if (await EmailExists(dto.Email!)) // ! dùng để chắc chắn rằng email không null cho compiler đừng cảnh báo
-                throw new ConflictException("Email đã tồn tại!");
-            if (await PhoneNumberExists(dto.PhoneNumber))
-                throw new ConflictException("Số điện thoại đã tồn tại");
+            await CheckRoleId(dto.RoleId);
+            await EmailExists(dto.Email!); // ! dùng để chắc chắn rằng email không null cho compiler đừng cảnh báo
+            await PhoneNumberExists(dto.PhoneNumber);
             CheckDateOfBirth(dto.DateOfBirth);
             var user = MapToEntity(dto);
             await _context.Users.AddAsync(user);
@@ -165,12 +168,9 @@ namespace HotelManagement.Services
         {
             var user = await _context.Users.FindAsync(id);
             if (user is null) return null;
-            if (!await CheckRoleId(dto.RoleId))
-                throw new NotFoundException("Role không tồn tại!");
-            if (await EmailExists(dto.Email!, id))
-                throw new ConflictException("Email đã tồn tại!");
-            if (await PhoneNumberExists(dto.PhoneNumber, id))
-                throw new ConflictException("Số điện thoại đã tồn tại");
+            await CheckRoleId(dto.RoleId);
+            await EmailExists(dto.Email!, id);
+            await PhoneNumberExists(dto.PhoneNumber, id);
             CheckDateOfBirth(dto.DateOfBirth);
             UpdateEntity(user, dto);
             await _context.SaveChangesAsync();

@@ -63,16 +63,20 @@ namespace HotelManagement.Services
             promotion.EndDate = dto.EndDate;
         }
         // Check trùng PromotionCode
-        private async Task<bool> PromotionCodeExists(string promotionCode, int? promotionId = null)
+        private async Task PromotionCodeExists(string promotionCode, int? promotionId = null)
         {
-            return await _context.Promotions.AnyAsync(p => p.PromotionCode == promotionCode
+            var exists = await _context.Promotions.AnyAsync(p => p.PromotionCode == promotionCode
                                                   && (promotionId == null || promotionId != p.PromotionId));
+            if (exists)
+                throw new ConflictException("Mã khuyến mãi đã tồn tại!");
         }
         // Check trùng PromotionName
-        private async Task<bool> PromotionNameExists(string promotionName, int? promotionId = null)
+        private async Task PromotionNameExists(string promotionName, int? promotionId = null)
         {
-            return await _context.Promotions.AnyAsync(p => p.PromotionName == promotionName
+            var exists = await _context.Promotions.AnyAsync(p => p.PromotionName == promotionName
                                                     && (promotionId == null || promotionId != p.PromotionId));
+            if (exists)
+                throw new ConflictException("Tên khuyến mãi đã tồn tại!");
         }
         // Check Date
         private void CheckDate(DateTime startDate, DateTime endDate)
@@ -139,10 +143,8 @@ namespace HotelManagement.Services
         // Create 
         public async Task<PromotionResponseDto> CreateAsync(PromotionCreateDto dto)
         {
-            if (await PromotionCodeExists(dto.PromotionCode!))
-                throw new ConflictException("Mã khuyến mãi đã tồn tại!");
-            if (await PromotionNameExists(dto.PromotionName!))
-                throw new ConflictException("Tên khuyến mãi đã tồn tại!");
+            await PromotionCodeExists(dto.PromotionCode!);
+           await PromotionNameExists(dto.PromotionName!);
             CheckDate(dto.StartDate, dto.EndDate);
             var promotion = MapToEntity(dto);
             await _context.Promotions.AddAsync(promotion);
@@ -154,10 +156,8 @@ namespace HotelManagement.Services
         {
             var promotion = await _context.Promotions.FindAsync(id);
             if (promotion is null) return null;
-            if (await PromotionCodeExists(dto.PromotionCode!, id))
-                throw new ConflictException("Mã khuyến mãi đã tồn tại!");
-            if (await PromotionNameExists(dto.PromotionName!, id))
-                throw new ConflictException("Tên khuyến mãi đã tồn tại!");
+            await PromotionCodeExists(dto.PromotionCode!, id);
+            await PromotionNameExists(dto.PromotionName!, id);
             CheckDate(dto.StartDate, dto.EndDate);
             UpdateEntity(promotion, dto);
             await _context.SaveChangesAsync();
@@ -184,7 +184,7 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<PromotionResponseDto?> RestoreAsync(int id)
         {
-            var promotion = await _context.Promotions.FirstOrDefaultAsync(s => s.PromotionId == id);
+            var promotion = await _context.Promotions.FindAsync(id);
             if (promotion is null) return null;
             promotion.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

@@ -45,10 +45,12 @@ namespace HotelManagement.Services
             package.Description = dto.Description;
         }
         // Check trùng ServiceName
-        private async Task<bool> PackageNameExists(string packageName, int? servicePackageId = null)
+        private async Task PackageNameExists(string packageName, int? servicePackageId = null)
         {
-            return await _context.ServicePackages.AnyAsync(s => s.PackageName == packageName
+            var exists = await _context.ServicePackages.AnyAsync(s => s.PackageName == packageName
                                                   && (servicePackageId == null || servicePackageId != s.ServicePackageId));
+            if (exists)
+                    throw new ConflictException("Tên gói dịch vụ đã tồn tại!");
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -95,8 +97,7 @@ namespace HotelManagement.Services
         // Create 
         public async Task<ServicePackageResponseDto> CreateAsync(ServicePackageCreateDto dto)
         {
-            if (await PackageNameExists(dto.PackageName!))
-                throw new ConflictException("Tên gói dịch vụ đã tồn tại!");
+            await PackageNameExists(dto.PackageName!);
             var package = MapToEntity(dto);
             await _context.ServicePackages.AddAsync(package);
             await _context.SaveChangesAsync();
@@ -107,8 +108,7 @@ namespace HotelManagement.Services
         {
             var package = await _context.ServicePackages.FindAsync(id);
             if (package is null) return null;
-            if (await PackageNameExists(dto.PackageName!, id))
-                throw new ConflictException("Tên gói dịch vụ đã tồn tại!");
+            await PackageNameExists(dto.PackageName!, id);
             UpdateEntity(package, dto);
             await _context.SaveChangesAsync();
             return MapToResponseDto(package);
@@ -134,7 +134,7 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<ServicePackageResponseDto?> RestoreAsync(int id)
         {
-            var package = await _context.ServicePackages.FirstOrDefaultAsync(s => s.ServicePackageId == id);
+            var package = await _context.ServicePackages.FindAsync(id);
             if (package is null) return null;
             package.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

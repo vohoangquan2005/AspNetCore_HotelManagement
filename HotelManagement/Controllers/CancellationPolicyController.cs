@@ -67,7 +67,7 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var deletePolicy = await _cancellationPolicyService.DeleteAsync(id);
-            if (deletePolicy is null) return NotFound();
+            if (!deletePolicy) return NotFound();
             return NoContent();
         }
     }

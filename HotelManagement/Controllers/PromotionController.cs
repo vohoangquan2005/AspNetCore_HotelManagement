@@ -67,7 +67,7 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var deletePromotion = await _promotionService.DeleteAsync(id);
-            if (deletePromotion is null) return NotFound();
+            if (!deletePromotion) return NotFound();
             return NoContent();
         }
     }

@@ -69,7 +69,7 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var deleteRole = await _roleService.DeleteAsync(id);
-            if (deleteRole is null) return NotFound();
+            if (!deleteRole) return NotFound();
             return NoContent();
         }
     }

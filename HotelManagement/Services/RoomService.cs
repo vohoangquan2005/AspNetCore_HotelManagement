@@ -57,15 +57,19 @@ namespace HotelManagement.Services
             room.Description = dto.Description;
         }
         // Check trùng room name
-        private async Task<bool> RoomNameExists(string roomName, int? roomId = null) 
+        private async Task RoomNameExists(string roomName, int? roomId = null) 
         {
-            return await _context.Rooms.AnyAsync(r => r.RoomName == roomName
+            var exists = await _context.Rooms.AnyAsync(r => r.RoomName == roomName
                                                    && (roomId == null || roomId != r.RoomId));
+            if (exists)
+                throw new ConflictException("Tên phòng đã tồn tại!");
         }
         // Check RoomTypeId đã tồn tại chưa?
-        private async Task<bool> CheckRoomTypeId(int roomTypeId) 
+        private async Task CheckRoomTypeId(int roomTypeId) 
         {
-            return await _context.RoomTypes.AnyAsync(r => r.RoomTypeId == roomTypeId);
+            var exists = await _context.RoomTypes.AnyAsync(r => r.RoomTypeId == roomTypeId);
+            if (!exists)
+                throw new NotFoundException("Loại phòng không tồn tại!");
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -123,10 +127,8 @@ namespace HotelManagement.Services
         // Create 
         public async Task<RoomResponseDto> CreateAsync(RoomCreateDto dto)
         {
-            if (await RoomNameExists(dto.RoomName!))
-                throw new ConflictException("Tên phòng đã tồn tại!");
-            if (!await CheckRoomTypeId(dto.RoomTypeId))
-                throw new NotFoundException("Loại phòng không tồn tại!");
+            await RoomNameExists(dto.RoomName!);
+            await CheckRoomTypeId(dto.RoomTypeId);
             var room = MapToEntity(dto);
             await _context.Rooms.AddAsync(room);
             await _context.SaveChangesAsync();
@@ -137,10 +139,8 @@ namespace HotelManagement.Services
         {
             var room = await _context.Rooms.FindAsync(id);
             if (room is null) return null;
-            if (await RoomNameExists(dto.RoomName!, id))
-                throw new ConflictException("Tên phòng đã tồn tại!");
-            if (!await CheckRoomTypeId(dto.RoomTypeId))
-                throw new NotFoundException("Loại phòng không tồn tại!");
+            await RoomNameExists(dto.RoomName!, id);
+            await CheckRoomTypeId(dto.RoomTypeId);
             UpdateEntity(room, dto);
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);

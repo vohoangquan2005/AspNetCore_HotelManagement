@@ -36,5 +36,23 @@ namespace HotelManagement.Data
                 typeof(AppDbContext).Assembly
             );
         }
+        // Tự động cập nhật UpdateAt mỗi khi SaveChangesAsync
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var entries = ChangeTracker.Entries();
+            foreach (var entry in entries)
+            {
+                if (entry.State == EntityState.Modified)
+                {
+                    var property = entry.Properties
+                        .FirstOrDefault(p => p.Metadata.Name == "UpdateAt");
+                    if (property != null)
+                    {
+                        property.CurrentValue = DateTime.Now;
+                    }
+                }
+            }
+            return await base.SaveChangesAsync(cancellationToken);
+        }
     }
 }
