@@ -120,13 +120,13 @@ namespace HotelManagement.Services
             return MapToResponseDto(service);
         }
         // Delete
-        public async Task<ServiceResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var service = await _context.Services.FindAsync(id);
-            if (service is null) return null;
+            if (service is null) return false;
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(service);
+            return true;
         }
         // Xóa tạm
         public async Task<ServiceResponseDto?> SoftDeleteAsync(int id)

@@ -164,13 +164,13 @@ namespace HotelManagement.Services
             return MapToResponseDto(promotion);
         }
         // Delete
-        public async Task<PromotionResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var promotion = await _context.Promotions.FindAsync(id);
-            if (promotion is null) return null;
+            if (promotion is null) return false;
             _context.Promotions.Remove(promotion);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(promotion);
+            return true;
         }
         // Xóa tạm
         public async Task<PromotionResponseDto?> SoftDeleteAsync(int id)

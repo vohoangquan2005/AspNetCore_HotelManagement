@@ -8,6 +8,8 @@ namespace HotelManagement.DTOs.User
         public string? FullName { get; set; }
         public string? Email { get; set; }
         public int RoleId { get; set; }
+        // Thông tin từ Role
+        public string? RoleName { get; set; }
         public ActiveEnums IsLocked { get; set; }   // Active or Inactive
         public string? Gender { get; set; }     // Giới tính
         public DateTime? DateOfBirth { get; set; } // Ngày sinh

@@ -127,14 +127,14 @@ namespace HotelManagement.Services
             return await GetByIdAsync(id);
         }
         // Delete
-        public async Task<CustomerResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var customer = await _context.Customers.Include(c => c.User)
                                                    .FirstOrDefaultAsync(c => c.CustomerId == id);
-            if (customer == null) return null;
+            if (customer == null) return false;
             _context.Customers.Remove(customer);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(customer);
+            return true;
         }
     }
 }

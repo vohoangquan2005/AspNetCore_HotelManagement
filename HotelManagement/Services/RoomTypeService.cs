@@ -128,13 +128,13 @@ namespace HotelManagement.Services
             return MapToResponseDto(roomType);
         }
         // Delete
-        public async Task<RoomTypeResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var roomType = await _context.RoomTypes.FindAsync(id);
-            if (roomType is null) return null;
+            if (roomType is null) return false;
             _context.RoomTypes.Remove(roomType);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(roomType);
+            return true;
         }
         // Xóa tạm
         public async Task<RoomTypeResponseDto?> SoftDeleteAsync(int id)

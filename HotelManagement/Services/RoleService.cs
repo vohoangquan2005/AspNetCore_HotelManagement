@@ -89,13 +89,13 @@ namespace HotelManagement.Services
             return MapToResponseDto(role);
         }
         // Delete
-        public async Task<RoleResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var role = await _context.Roles.FindAsync(id);
-            if (role is null) return null;
+            if (role is null) return false;
             _context.Roles.Remove(role);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(role);
+            return true;
         }
         public async Task<RoleResponseDto?> SoftDeleteAsync(int id)
         {

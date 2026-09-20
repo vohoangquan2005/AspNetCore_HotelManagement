@@ -114,13 +114,13 @@ namespace HotelManagement.Services
             return MapToResponseDto(package);
         }
         // Delete
-        public async Task<ServicePackageResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var package = await _context.ServicePackages.FindAsync(id);
-            if (package is null) return null;
+            if (package is null) return false;
             _context.ServicePackages.Remove(package);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(package);
+            return true;
         }
         // Xóa tạm
         public async Task<ServicePackageResponseDto?> SoftDeleteAsync(int id)

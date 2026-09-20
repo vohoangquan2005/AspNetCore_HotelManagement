@@ -7,6 +7,7 @@ namespace HotelManagement.DTOs.Room
         public int RoomId { get; set; }
         public string? RoomName { get; set; }
         public int RoomTypeId { get; set; }
+        public string? RoomTypeName { get; set; }
         public int Capacity { get; set; }       // Sức chứa
         public string? Location { get; set; }   // Vị trí: Tầng a khu b
         public decimal PricePerNight { get; set; }// Tiền phòng 1 đêm

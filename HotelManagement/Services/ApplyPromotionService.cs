@@ -19,8 +19,13 @@ namespace HotelManagement.Services
             return new ApplyPromotionResponseDto
             {
                 ApplyPromotionId = applyPromotion.ApplyPromotionId,
+                // Thông tin Promotion
                 PromotionId = applyPromotion.PromotionId,
+                PromotionCode = applyPromotion.Promotion?.PromotionCode,
+                PromotionName = applyPromotion.Promotion?.PromotionName,
+                // Thông tin RoomType
                 RoomTypeId = applyPromotion.RoomTypeId,
+                RoomTypeName = applyPromotion.RoomType?.RoomTypeName,
                 CreateAt = applyPromotion.CreateAt,
                 UpdateAt = applyPromotion.UpdateAt
             };
@@ -40,13 +45,13 @@ namespace HotelManagement.Services
             applyPromotion.PromotionId = dto.PromotionId;
             applyPromotion.RoomTypeId = dto.RoomTypeId;
         }
-        // Check PromotionId đã được tạo trong bảng Promotion chưa?
-        private async Task<bool> PromotionIdExists(int promotionId)
+        // Check PromotionId có tồn tại trong bảng Promotion không?
+        private async Task<bool> CheckPromotionId(int promotionId)
         {
             return await _context.Promotions.AnyAsync(p => p.PromotionId == promotionId);
         }
-        // Check RoomTypeId đã được tạo trong bảng RoomType chưa?
-        private async Task<bool> RoomTypeIdExists(int roomTypeId)
+        // Check RoomTypeId có tồn tại trong bảng RoomType không?
+        private async Task<bool> CheckRoomTypeId(int roomTypeId)
         {
             return await _context.RoomTypes.AnyAsync(a => a.RoomTypeId == roomTypeId);
         }
@@ -66,7 +71,10 @@ namespace HotelManagement.Services
                                                             {
                                                                 ApplyPromotionId = a.ApplyPromotionId,
                                                                 PromotionId = a.PromotionId,
+                                                                PromotionCode = a.Promotion!.PromotionCode,
+                                                                PromotionName = a.Promotion!.PromotionName,
                                                                 RoomTypeId = a.RoomTypeId,
+                                                                RoomTypeName = a.RoomType!.RoomTypeName,
                                                                 CreateAt = a.CreateAt,
                                                                 UpdateAt = a.UpdateAt
                                                             }).ToListAsync();
@@ -75,47 +83,49 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<ApplyPromotionResponseDto?> GetByIdAsync(int id)
         {
-            var apply = await _context.ApplyPromotions.FindAsync(id);
+            var apply = await _context.ApplyPromotions.Include(a => a.Promotion)
+                                                      .Include(a => a.RoomType)
+                                                      .FirstOrDefaultAsync(a => a.ApplyPromotionId == id);
             if (apply is null) return null;
             return MapToResponseDto(apply);
         }
         // Create 
         public async Task<ApplyPromotionResponseDto> CreateAsync(ApplyPromotionCreateDto dto)
         {
-            if (!await PromotionIdExists(dto.PromotionId))
+            if (!await CheckPromotionId(dto.PromotionId))
                 throw new NotFoundException("Mã khuyến mãi không tồn tại!");
-            if (!await RoomTypeIdExists(dto.RoomTypeId))
+            if (!await CheckRoomTypeId(dto.RoomTypeId))
                 throw new NotFoundException("Loại phòng không tồn tại!");
             if (await CheckApply(dto.PromotionId, dto.RoomTypeId))
                 throw new ConflictException("Khuyến mãi đã được áp dụng cho loại phòng này. Không thể áp dụng tiếp!");
             var apply = MapToEntity(dto);
             await _context.ApplyPromotions.AddAsync(apply);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(apply);
+            return (await GetByIdAsync(apply.ApplyPromotionId))!;
         }
         // Update
         public async Task<ApplyPromotionResponseDto?> UpdateAsync(int id, ApplyPromotionUpdateDto dto)
         {
             var apply = await _context.ApplyPromotions.FindAsync(id);
             if (apply is null) return null;
-            if (!await PromotionIdExists(dto.PromotionId))
+            if (!await CheckPromotionId(dto.PromotionId))
                 throw new NotFoundException("Mã khuyến mãi không tồn tại!");
-            if (!await RoomTypeIdExists(dto.RoomTypeId))
+            if (!await CheckRoomTypeId(dto.RoomTypeId))
                 throw new NotFoundException("Loại phòng không tồn tại!");
             if (await CheckApply(dto.PromotionId, dto.RoomTypeId, id))
                 throw new ConflictException("Khuyến mãi đã được áp dụng cho loại phòng này. Không thể áp dụng tiếp!");
             UpdateEntity(apply, dto);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(apply);
+            return await GetByIdAsync(id);
         }
         // Delete
-        public async Task<ApplyPromotionResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var apply = await _context.ApplyPromotions.FindAsync(id);
-            if (apply is null) return null;
+            if (apply is null) return false;
             _context.ApplyPromotions.Remove(apply);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(apply);
+            return true;
         }
     }
 }

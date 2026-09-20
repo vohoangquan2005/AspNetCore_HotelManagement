@@ -22,6 +22,7 @@ namespace HotelManagement.Services
                 RoomId = room.RoomId,
                 RoomName = room.RoomName,
                 RoomTypeId = room.RoomTypeId,
+                RoomTypeName = room.RoomType?.RoomTypeName,
                 Capacity = room.Capacity,
                 Location = room.Location,
                 PricePerNight = room.PricePerNight,
@@ -62,7 +63,7 @@ namespace HotelManagement.Services
                                                    && (roomId == null || roomId != r.RoomId));
         }
         // Check RoomTypeId đã tồn tại chưa?
-        private async Task<bool> RoomTypeIdExists(int roomTypeId) 
+        private async Task<bool> CheckRoomTypeId(int roomTypeId) 
         {
             return await _context.RoomTypes.AnyAsync(r => r.RoomTypeId == roomTypeId);
         }
@@ -78,6 +79,7 @@ namespace HotelManagement.Services
                                                 RoomId = r.RoomId,
                                                 RoomName = r.RoomName,
                                                 RoomTypeId = r.RoomTypeId,
+                                                RoomTypeName = r.RoomType!.RoomTypeName,
                                                 Capacity = r.Capacity,
                                                 Location = r.Location,
                                                 PricePerNight = r.PricePerNight,
@@ -98,6 +100,7 @@ namespace HotelManagement.Services
                                                 RoomId = r.RoomId,
                                                 RoomName = r.RoomName,
                                                 RoomTypeId = r.RoomTypeId,
+                                                RoomTypeName = r.RoomType!.RoomTypeName,
                                                 Capacity = r.Capacity,
                                                 Location = r.Location,
                                                 PricePerNight = r.PricePerNight,
@@ -112,7 +115,8 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<RoomResponseDto?> GetByIdAsync(int id)
         {
-            var room = await _context.Rooms.FindAsync(id);
+            var room = await _context.Rooms.Include(r => r.RoomType)
+                                           .FirstOrDefaultAsync(r => r.RoomId == id);
             if (room is null) return null;
             return MapToResponseDto(room);
         }
@@ -121,12 +125,12 @@ namespace HotelManagement.Services
         {
             if (await RoomNameExists(dto.RoomName!))
                 throw new ConflictException("Tên phòng đã tồn tại!");
-            if (!await RoomTypeIdExists(dto.RoomTypeId))
+            if (!await CheckRoomTypeId(dto.RoomTypeId))
                 throw new NotFoundException("Loại phòng không tồn tại!");
             var room = MapToEntity(dto);
             await _context.Rooms.AddAsync(room);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(room);
+            return (await GetByIdAsync(room.RoomId))!;
         }
         // Update
         public async Task<RoomResponseDto?> UpdateAsync(int id, RoomUpdateDto dto)
@@ -135,20 +139,20 @@ namespace HotelManagement.Services
             if (room is null) return null;
             if (await RoomNameExists(dto.RoomName!, id))
                 throw new ConflictException("Tên phòng đã tồn tại!");
-            if (!await RoomTypeIdExists(dto.RoomTypeId))
+            if (!await CheckRoomTypeId(dto.RoomTypeId))
                 throw new NotFoundException("Loại phòng không tồn tại!");
             UpdateEntity(room, dto);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(room);
+            return await GetByIdAsync(id);
         }
         // Delete
-        public async Task<RoomResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var room = await _context.Rooms.FindAsync(id);
-            if (room is null) return null;
+            if (room is null) return false;
             _context.Rooms.Remove(room);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(room);
+            return true;
         }
         // Xóa tạm
         public async Task<RoomResponseDto?> SoftDeleteAsync(int id)
@@ -157,16 +161,16 @@ namespace HotelManagement.Services
             if (room is null) return null;
             room.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
-            return MapToResponseDto(room);
+            return await GetByIdAsync(id);
         }
         // Khôi phục (Restore)
         public async Task<RoomResponseDto?> RestoreAsync(int id)
         {
-            var room = await _context.Rooms.FirstOrDefaultAsync(r => r.RoomId == id);
+            var room = await _context.Rooms.FindAsync(id);
             if (room is null) return null;
             room.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
-            return MapToResponseDto(room);
+            return await GetByIdAsync(id);
         }
 
     }

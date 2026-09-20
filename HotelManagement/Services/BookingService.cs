@@ -19,14 +19,26 @@ namespace HotelManagement.Services
             return new BookingResponseDto
             {
                 BookingId = booking.BookingId,
+                // Thông tin Customer
                 CustomerId = booking.CustomerId,
+                FullName = booking.Customer?.User?.FullName,
+                Email = booking.Customer?.User?.Email,
+                PhoneNumber = booking.Customer?.User?.PhoneNumber,
+                // Thông tin Booking
                 BookingDate = booking.BookingDate,
                 ExpectedCheckIn = booking.ExpectedCheckIn,
                 ExpectedCheckOut = booking.ExpectedCheckOut,
                 GuestCount = booking.GuestCount,
                 RoomCount = booking.RoomCount,
+                // Thông tin Promotion
                 PromotionId = booking.PromotionId,
+                PromotionCode = booking.Promotion?.PromotionCode,
+                PromotionName = booking.Promotion?.PromotionName,
+                DiscountValue = booking.Promotion?.DiscountValue,
+                // Thông tin ServicePackage
                 ServicePackageId = booking.ServicePackageId,
+                PackageName = booking.ServicePackage?.PackageName,
+                // Thông tin tiền
                 DepositAmount = booking.DepositAmount,
                 RoomAmount = booking.RoomAmount,
                 PackageAmount = booking.PackageAmount,
@@ -81,18 +93,18 @@ namespace HotelManagement.Services
             booking.Status = dto.Status;
         }
         // Check CustomerId có tồn tại trong bảng Customer không?
-        private async Task<bool> CustomerIdExists(int customerId)
+        private async Task<bool> CheckCustomerId(int customerId)
         {
             return await _context.Customers.AnyAsync(c => c.CustomerId == customerId);
         }
         // Check PromotionId có tồn tại trong bảng Promotion không?
-        private async Task<bool> PromotionIdExists(int? promotionId)
+        private async Task<bool> CheckPromotionId(int? promotionId)
         {
             if (promotionId is null) return true;
             return await _context.Promotions.AnyAsync(c => c.PromotionId == promotionId);
         }
         // Check ServicePackageId có tồn tại trong bảng ServicePackage không?
-        private async Task<bool> ServicePackageIdExists(int? servicePackageId)
+        private async Task<bool> CheckServicePackageId(int? servicePackageId)
         {
             if (servicePackageId is null) return true;
             return await _context.ServicePackages.AnyAsync(c => c.ServicePackageId == servicePackageId);
@@ -112,14 +124,27 @@ namespace HotelManagement.Services
             var bookings = await _context.Bookings.Select(b => new BookingResponseDto
             {
                 BookingId = b.BookingId,
+                // Thông tin Customer
                 CustomerId = b.CustomerId,
+                FullName = b.Customer!.User!.FullName,
+                Email = b.Customer!.User!.Email,
+                PhoneNumber = b.Customer!.User!.PhoneNumber,
+                // Thông tin Booking
                 BookingDate = b.BookingDate,
                 ExpectedCheckIn = b.ExpectedCheckIn,
                 ExpectedCheckOut = b.ExpectedCheckOut,
                 GuestCount = b.GuestCount,
                 RoomCount = b.RoomCount,
+                // Thông tin Promotion
                 PromotionId = b.PromotionId,
+                PromotionCode = b.Promotion != null ? b.Promotion.PromotionCode : null,
+                PromotionName = b.Promotion != null ? b.Promotion.PromotionName : null,
+                DiscountValue = b.Promotion != null ? b.Promotion.DiscountValue : null,
+
+                // Thông tin ServicePackage
                 ServicePackageId = b.ServicePackageId,
+                PackageName = b.ServicePackage != null ? b.ServicePackage.PackageName : null,
+                // Thông tin tiền
                 DepositAmount = b.DepositAmount,
                 RoomAmount = b.RoomAmount,
                 PackageAmount = b.PackageAmount,
@@ -136,49 +161,52 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<BookingResponseDto?> GetByIdAsync(int id)
         {
-            var booking = await _context.Bookings.FindAsync(id);
+            var booking = await _context.Bookings.Include(b => b.Customer).ThenInclude(c => c!.User)
+                                                 .Include(b => b.Promotion)
+                                                 .Include(b => b.ServicePackage)
+                                                 .FirstOrDefaultAsync(b => b.BookingId == id);
             if (booking is null) return null;
             return MapToResponseDto(booking);
         }
         // Create 
         public async Task<BookingResponseDto> CreateAsync(BookingCreateDto dto)
         {
-            if (!await CustomerIdExists(dto.CustomerId))
+            if (!await CheckCustomerId(dto.CustomerId))
                 throw new NotFoundException("Mã khách hàng không tồn tại!");
-            if (!await PromotionIdExists(dto.PromotionId))
+            if (!await CheckPromotionId(dto.PromotionId))
                 throw new NotFoundException("Mã khuyến mãi không tồn tại!");
-            if (!await ServicePackageIdExists(dto.ServicePackageId))
+            if (!await CheckServicePackageId(dto.ServicePackageId))
                 throw new NotFoundException("Gói dịch vụ không tồn tại!");
             CheckDate(dto.ExpectedCheckIn, dto.ExpectedCheckOut);
             var booking = MapToEntity(dto);
             await _context.Bookings.AddAsync(booking);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(booking);
+            return (await GetByIdAsync(booking.BookingId))!;
         }
         // Update
         public async Task<BookingResponseDto?> UpdateAsync(int id, BookingUpdateDto dto)
         {
             var booking = await _context.Bookings.FindAsync(id);
             if (booking is null) return null;
-            if (!await CustomerIdExists(dto.CustomerId))
+            if (!await CheckCustomerId(dto.CustomerId))
                 throw new NotFoundException("Mã khách hàng không tồn tại!");
-            if (!await PromotionIdExists(dto.PromotionId))
+            if (!await CheckPromotionId(dto.PromotionId))
                 throw new NotFoundException("Mã khuyến mãi không tồn tại!");
-            if (!await ServicePackageIdExists(dto.ServicePackageId))
+            if (!await CheckServicePackageId(dto.ServicePackageId))
                 throw new NotFoundException("Gói dịch vụ không tồn tại!");
             CheckDate(dto.ExpectedCheckIn, dto.ExpectedCheckOut);
             UpdateEntity(booking, dto);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(booking);
+            return await GetByIdAsync(id);
         }
         // Delete
-        public async Task<BookingResponseDto?> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var booking = await _context.Bookings.FindAsync(id);
-            if (booking is null) return null;
+            if (booking is null) return false;
             _context.Bookings.Remove(booking);
             await _context.SaveChangesAsync();
-            return MapToResponseDto(booking);
+            return true;
         }
     }
 }
