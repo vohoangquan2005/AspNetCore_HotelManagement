@@ -8,6 +8,7 @@ namespace HotelManagement.DTOs.Room
         [Required(ErrorMessage = "Vui lòng nhập tên phòng!")]
         [StringLength(50, ErrorMessage = "Tên phòng không vượt quá 50 ký tự!")]
         public string? RoomName { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Mã loại phòng không hợp lệ!")]
         public int RoomTypeId { get; set; }
         [Required(ErrorMessage = "Vui lòng nhập sức chứa của phòng!")]
         public int Capacity { get; set; }       // Sức chứa

@@ -29,13 +29,9 @@ namespace HotelManagement.Models
         public Promotion? Promotion { get; set; }
         public ServicePackage? ServicePackage { get; set; }
         public ICollection<BookingDetail> BookingDetails { get; set; } = new List<BookingDetail>();
-
         public ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();
-
         public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
-
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
-
         public ICollection<Cancellation> Cancellations { get; set; } = new List<Cancellation>();
     }
 }

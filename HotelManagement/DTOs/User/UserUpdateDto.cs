@@ -13,6 +13,7 @@ namespace HotelManagement.DTOs.User
         [Required(ErrorMessage = "Vui lòng nhập email!")]
         public string? Email { get; set; }
         public string? HashPassword { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Mã vai trò không hợp lệ!")]
         public int RoleId { get; set; }
         public ActiveEnums IsLocked { get; set; }         // Khóa tài khoản: 0<hoạt động> 1 <khóa>
         public string? Gender { get; set; }     // Giới tính
