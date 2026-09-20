@@ -22,6 +22,7 @@ builder.Services.AddOpenApi();
 // Services
 builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<RoomTypeService>();
 builder.Services.AddScoped<RoomService>();
 builder.Services.AddScoped<ServiceService>();

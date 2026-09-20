@@ -31,6 +31,119 @@ namespace HotelManagement.Data
                 context.Roles.AddRange(roles);
                 context.SaveChanges();
             }
+// =============================================== USER ===============================================
+            if (!context.Users.Any())
+            {
+                var adminRole = context.Roles
+                    .First(r => r.RoleName == "Admin");
+                var staffRole = context.Roles
+                    .First(r => r.RoleName == "Staff");
+                var customerRole = context.Roles
+                    .First(r => r.RoleName == "Customer");
+                var users = new List<User>
+                {
+                    new User
+                    {
+                        FullName = "Nguyễn Văn Admin",
+                        Email = "admin@hotel.com",
+                        HashPassword = "123456",
+                        RoleId = adminRole.RoleId,
+                        IsLocked = ActiveEnums.Active,
+                        Gender = "Nam",
+                        DateOfBirth = new DateTime(1990, 1, 1),
+                        PhoneNumber = "0900000001",
+                        Avatar = null,
+                        IsDeleted = ActiveEnums.Active
+                    },
+                    new User
+                    {
+                        FullName = "Trần Văn Nhân",
+                        Email = "staff@hotel.com",
+                        HashPassword = "123456",
+                        RoleId = staffRole.RoleId,
+                        IsLocked = ActiveEnums.Active,
+                        Gender = "Nam",
+                        DateOfBirth = new DateTime(1995, 5, 10),
+                        PhoneNumber = "0900000002",
+                        Avatar = null,
+                        IsDeleted = ActiveEnums.Active
+                    },
+                    new User
+                    {
+                        FullName = "Nguyễn Văn An",
+                        Email = "an@gmail.com",
+                        HashPassword = "123456",
+                        RoleId = customerRole.RoleId,
+                        IsLocked = ActiveEnums.Active,
+                        Gender = "Nam",
+                        DateOfBirth = new DateTime(2000, 3, 15),
+                        PhoneNumber = "0900000003",
+                        Avatar = null,
+                        IsDeleted = ActiveEnums.Active
+                    },
+                    new User
+                    {
+                        FullName = "Trần Thị Bình",
+                        Email = "binh@gmail.com",
+                        HashPassword = "123456",
+                        RoleId = customerRole.RoleId,
+                        IsLocked = ActiveEnums.Active,
+                        Gender = "Nữ",
+                        DateOfBirth = new DateTime(1999, 8, 20),
+                        PhoneNumber = "0900000004",
+                        Avatar = null,
+                        IsDeleted = ActiveEnums.Active
+                    },
+                    new User
+                    {
+                        FullName = "Lê Minh Cường",
+                        Email = "cuong@gmail.com",
+                        HashPassword = "123456",
+                        RoleId = customerRole.RoleId,
+                        IsLocked = ActiveEnums.Active,
+                        Gender = "Nam",
+                        DateOfBirth = new DateTime(2001, 12, 5),
+                        PhoneNumber = "0900000005",
+                        Avatar = null,
+                        IsDeleted = ActiveEnums.Active
+                    }
+                };
+                context.Users.AddRange(users);
+                context.SaveChanges();
+            }
+// =============================================== CUSTOMER ===============================================
+            if (!context.Customers.Any())
+            {
+                var userAn = context.Users
+                    .First(u => u.Email == "an@gmail.com");
+                var userBinh = context.Users
+                    .First(u => u.Email == "binh@gmail.com");
+                var userCuong = context.Users
+                    .First(u => u.Email == "cuong@gmail.com");
+                var customers = new List<Customer>
+                {
+                    new Customer
+                    {
+                        UserId = userAn.UserId,
+                        CCCD = "079200000001",
+                        Nationality = "Việt Nam"
+                    },
+                    new Customer
+                    {
+                        UserId = userBinh.UserId,
+                        CCCD = "079200000002",
+                        Nationality = "Việt Nam"
+                    },
+                    new Customer
+                    {
+                        UserId = userCuong.UserId,
+                        CCCD = "079200000003",
+                        Nationality = "Việt Nam"
+                    }
+                };
+                context.Customers.AddRange(customers);
+                context.SaveChanges();
+            }
 // =============================================== ROOM TYPE ===============================================
             if (!context.RoomTypes.Any())
             {
