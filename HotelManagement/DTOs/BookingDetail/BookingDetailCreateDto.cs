@@ -12,8 +12,6 @@ namespace HotelManagement.DTOs.BookingDetail
         public DateTime? ActualCheckOut { get; set; }// Thời gian trả phòng thực tế
         [Required(ErrorMessage = "Vui lòng nhập tiền phòng 1 đêm!")]
         public decimal PricePerNight { get; set; }
-        [Required(ErrorMessage = "Vui lòng nhập tổng số tiền!")]
-        public decimal TotalAmount { get; set; }
         [Required(ErrorMessage = "Vui lòng nhập số lượng khách ở phòng!")]
         public int GuestCount { get; set; }         // Số khách ở
     }

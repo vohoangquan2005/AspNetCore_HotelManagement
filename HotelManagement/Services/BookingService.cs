@@ -65,11 +65,6 @@ namespace HotelManagement.Services
                 PromotionId = dto.PromotionId,
                 ServicePackageId = dto.ServicePackageId,
                 DepositAmount = dto.DepositAmount,
-                RoomAmount = dto.RoomAmount,
-                PackageAmount = dto.PackageAmount,
-                DiscountAmount = dto.DiscountAmount,
-                AdditionalServiceAmount = dto.AdditionalServiceAmount,
-                TotalAmount = dto.TotalAmount,
                 Note = dto.Note
             };
         }
@@ -84,11 +79,6 @@ namespace HotelManagement.Services
             booking.PromotionId = dto.PromotionId;
             booking.ServicePackageId = dto.ServicePackageId;
             booking.DepositAmount = dto.DepositAmount;
-            booking.RoomAmount = dto.RoomAmount;
-            booking.PackageAmount = dto.PackageAmount;
-            booking.DiscountAmount = dto.DiscountAmount;
-            booking.AdditionalServiceAmount = dto.AdditionalServiceAmount;
-            booking.TotalAmount = dto.TotalAmount;
             booking.Note = dto.Note;
             booking.Status = dto.Status;
         }

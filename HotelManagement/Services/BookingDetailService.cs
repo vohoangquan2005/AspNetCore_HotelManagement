@@ -30,7 +30,7 @@ namespace HotelManagement.Services
                 CreateAt = bookingDetail.CreateAt
             };
         }
-        // Chuyển BookingCreateDto -> BookingDetail
+        // Chuyển BookingDetailCreateDto -> BookingDetail
         private BookingDetail MapToEntity(BookingDetailCreateDto dto)
         {
             return new BookingDetail
@@ -40,8 +40,8 @@ namespace HotelManagement.Services
                 ActualCheckIn = dto.ActualCheckIn,
                 ActualCheckOut = dto.ActualCheckOut,
                 PricePerNight = dto.PricePerNight,
-                TotalAmount = dto.TotalAmount,
-                GuestCount = dto.GuestCount
+                GuestCount = dto.GuestCount,
+                TotalAmount = CalculateTotalAmount(dto.ActualCheckIn, dto.ActualCheckOut, dto.PricePerNight)
             };
         }
         // Update BookingDetail từ BookingDetailUpdateDto
@@ -52,8 +52,8 @@ namespace HotelManagement.Services
             bookingDetail.ActualCheckIn = dto.ActualCheckIn;
             bookingDetail.ActualCheckOut = dto.ActualCheckOut;
             bookingDetail.PricePerNight = dto.PricePerNight;
-            bookingDetail.TotalAmount = dto.TotalAmount;
             bookingDetail.GuestCount = dto.GuestCount;
+            bookingDetail.TotalAmount = CalculateTotalAmount(dto.ActualCheckIn, dto.ActualCheckOut, dto.PricePerNight);
         }
         // Check BookingId có tồn tại trong bảng Booking không?
         private async Task CheckBookingId(int bookingId)
@@ -88,6 +88,22 @@ namespace HotelManagement.Services
             if (guestCount > room.Capacity)
                 throw new BadRequestException(
                     "Số lượng khách vượt quá sức chứa của phòng!");
+        }
+        // Check Date
+        private void CheckDate(DateTime? actualCheckIn, DateTime? actualCheckOut)
+        {
+            if (actualCheckIn is null || actualCheckOut is null) return;
+            if (actualCheckIn >= actualCheckOut)
+                throw new BadRequestException("Ngày trả phòng phải sau ngày nhận phòng!");
+        }
+        // Tính tổng tiền TotalAmount
+        private decimal CalculateTotalAmount(DateTime? actualCheckIn, DateTime? actualCheckOut, decimal pricePerNight)
+        {
+            if (actualCheckIn is null || actualCheckOut is null) return 0;
+            var numberOfNights = (actualCheckOut.Value.Date - actualCheckIn.Value.Date).Days;
+            if (numberOfNights <= 0)
+                throw new BadRequestException("Thời gian trả phòng phải sau thời gian nhận phòng!");
+            return numberOfNights * pricePerNight;
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -125,6 +141,7 @@ namespace HotelManagement.Services
             await CheckRoomId(dto.RoomId);
             await CheckBookingRoom(dto.RoomId, dto.BookingId);
             await CheckRoomCapacity(dto.RoomId, dto.GuestCount);
+            CheckDate(dto.ActualCheckIn, dto.ActualCheckOut);
             var bookingDetail = MapToEntity(dto);
             await _context.BookingDetails.AddAsync(bookingDetail);
             await _context.SaveChangesAsync();
@@ -139,6 +156,7 @@ namespace HotelManagement.Services
             await CheckRoomId(dto.RoomId);
             await CheckBookingRoom(dto.RoomId, dto.BookingId, id);
             await CheckRoomCapacity(dto.RoomId, dto.GuestCount);
+            CheckDate(dto.ActualCheckIn, dto.ActualCheckOut);
             UpdateEntity(bookingDetail, dto);
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);

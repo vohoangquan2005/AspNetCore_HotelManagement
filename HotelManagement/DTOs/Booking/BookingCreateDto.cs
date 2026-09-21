@@ -19,16 +19,6 @@ namespace HotelManagement.DTOs.Booking
         public int? ServicePackageId { get; set; }
         [Range(0, double.MaxValue, ErrorMessage = "Tiền đặt cọc không được âm!")]
         public decimal DepositAmount { get; set; }
-        [Range(0, double.MaxValue, ErrorMessage = "Tiền phòng không được âm!")]
-        public decimal RoomAmount { get; set; }
-        [Range(0, double.MaxValue, ErrorMessage = "Tiền gói dịch vụ không được âm!")]
-        public decimal PackageAmount { get; set; }
-        [Range(0, double.MaxValue, ErrorMessage = "Tiền giảm giá không được âm!")]
-        public decimal DiscountAmount { get; set; }
-        [Range(0, double.MaxValue, ErrorMessage = "Tiền dịch vụ thêm không được âm!")]
-        public decimal AdditionalServiceAmount { get; set; }
-        [Range(0, double.MaxValue, ErrorMessage = "Tổng tiền không được âm!")]
-        public decimal TotalAmount { get; set; }
         [StringLength(500, ErrorMessage = "Ghi chú không được vượt quá 500 ký tự!")]
         public string? Note { get; set; }
     }
