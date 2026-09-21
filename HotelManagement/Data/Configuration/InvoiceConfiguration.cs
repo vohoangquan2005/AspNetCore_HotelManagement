@@ -23,7 +23,8 @@ namespace HotelManagement.Data.Configuration
             // TaxAmount
             builder.Property(i => i.TaxAmount)
                    .IsRequired()
-                   .HasPrecision(18, 2);
+                   .HasPrecision(18, 2)
+                   .HasDefaultValue(10m);
             // DiscountAmount
             builder.Property(i => i.DiscountAmount)
                    .IsRequired()

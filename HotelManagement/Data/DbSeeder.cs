@@ -932,9 +932,9 @@ namespace HotelManagement.Data
                     {
                         BookingId = bookingCompleted.BookingId,
                         SubTotal = 890000m,
-                        TaxAmount = 89000m,
+                        TaxAmount = 10m,
                         DiscountAmount = 60000m,
-                        AmountDue = 919000m,
+                        AmountDue = 913000m,
                         Status = InvoiceEnums.Paid,
                         CreatedByUserId = admin.UserId
                     },
@@ -943,18 +943,17 @@ namespace HotelManagement.Data
                     {
                         BookingId = bookingConfirmed.BookingId,
                         SubTotal = 4300000m,
-                        TaxAmount = 430000m,
+                        TaxAmount = 10m,
                         DiscountAmount = 0m,
                         AmountDue = 4730000m,
                         Status = InvoiceEnums.PartiallyPaid,
                         CreatedByUserId = admin.UserId
                     },
-                    // Chưa thanh toán
                     new Invoice
                     {
                         BookingId = bookingCheckedIn.BookingId,
                         SubTotal = 3400000m,
-                        TaxAmount = 340000m,
+                        TaxAmount = 10m,
                         DiscountAmount = 0m,
                         AmountDue = 3740000m,
                         Status = InvoiceEnums.Unpaid,
@@ -991,7 +990,7 @@ namespace HotelManagement.Data
                     new Payment
                     {
                         InvoiceId = invoicePaid.InvoiceId,
-                        Amount = 719000m,
+                        Amount = 713000m,
                         PaymentType = "Thanh toán lần cuối",
                         PaymentMethod = "Tiền mặt",
                         TransactionCode = "TXN-20260812-001",
