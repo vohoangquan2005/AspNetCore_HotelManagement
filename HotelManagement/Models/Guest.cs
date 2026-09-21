@@ -11,7 +11,6 @@
         public string? Nationality { get; set; } = "Việt Nam";
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
-        public string? GuestType { get; set; }  // Người lớn / trẻ nhỏ
         public string? Note { get; set; }
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }

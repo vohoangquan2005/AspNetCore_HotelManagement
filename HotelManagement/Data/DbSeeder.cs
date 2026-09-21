@@ -527,7 +527,677 @@ namespace HotelManagement.Data
                 context.CancellationPolicies.AddRange(policies);
                 context.SaveChanges();
             }
-
+// =============================================== BOOKING ===============================================
+            if (!context.Bookings.Any())
+            {
+                var customerAn = context.Customers
+                    .First(c => c.User!.Email == "an@gmail.com");
+                var customerBinh = context.Customers
+                    .First(c => c.User!.Email == "binh@gmail.com");
+                var customerCuong = context.Customers
+                    .First(c => c.User!.Email == "cuong@gmail.com");
+                var welcome10 = context.Promotions
+                    .First(p => p.PromotionCode == "WELCOME10");
+                var vip20 = context.Promotions
+                    .First(p => p.PromotionCode == "VIP20");
+                var breakfastPackage = context.ServicePackages
+                    .First(p => p.PackageName == "Gói ăn sáng");
+                var familyPackage = context.ServicePackages
+                    .First(p => p.PackageName == "Gói gia đình");
+                var bookings = new List<Booking>
+                {
+                    // Booking hoàn thành
+                    new Booking
+                    {
+                        CustomerId = customerAn.CustomerId,
+                        BookingDate = new DateTime(2026, 8, 1),
+                        ExpectedCheckIn = new DateTime(2026, 8, 10),
+                        ExpectedCheckOut = new DateTime(2026, 8, 12),
+                        GuestCount = 2,
+                        RoomCount = 1,
+                        PromotionId = welcome10.PromotionId,
+                        ServicePackageId = breakfastPackage.ServicePackageId,
+                        DepositAmount = 200000m,
+                        RoomAmount = 600000m,
+                        PackageAmount = 150000m,
+                        DiscountAmount = 60000m,
+                        AdditionalServiceAmount = 100000m,
+                        TotalAmount = 790000m,
+                        Note = "Khách đã hoàn thành kỳ lưu trú.",
+                        Status = BookingEnums.Completed
+                    },
+                    // Booking đã xác nhận
+                    new Booking
+                    {
+                        CustomerId = customerBinh.CustomerId,
+                        BookingDate = new DateTime(2026, 9, 1),
+                        ExpectedCheckIn = new DateTime(2026, 10, 5),
+                        ExpectedCheckOut = new DateTime(2026, 10, 8),
+                        GuestCount = 3,
+                        RoomCount = 2,
+                        PromotionId = null,
+                        ServicePackageId = familyPackage.ServicePackageId,
+                        DepositAmount = 500000m,
+                        RoomAmount = 2100000m,
+                        PackageAmount = 400000m,
+                        DiscountAmount = 0m,
+                        AdditionalServiceAmount = 0m,
+                        TotalAmount = 2500000m,
+                        Note = "Khách đặt 2 phòng cho gia đình.",
+                        Status = BookingEnums.Confirmed
+                    },
+                    // Booking đang xử lý
+                    new Booking
+                    {
+                        CustomerId = customerCuong.CustomerId,
+                        BookingDate = new DateTime(2026, 9, 15),
+                        ExpectedCheckIn = new DateTime(2026, 10, 15),
+                        ExpectedCheckOut = new DateTime(2026, 10, 17),
+                        GuestCount = 2,
+                        RoomCount = 1,
+                        PromotionId = vip20.PromotionId,
+                        ServicePackageId = null,
+                        DepositAmount = 300000m,
+                        RoomAmount = 1000000m,
+                        PackageAmount = 0m,
+                        DiscountAmount = 200000m,
+                        AdditionalServiceAmount = 0m,
+                        TotalAmount = 800000m,
+                        Note = "Khách đang chờ xác nhận.",
+                        Status = BookingEnums.Pending
+                    },
+                    // Booking đã nhận phòng
+                    new Booking
+                    {
+                        CustomerId = customerAn.CustomerId,
+                        BookingDate = new DateTime(2026, 9, 10),
+                        ExpectedCheckIn = new DateTime(2026, 9, 20),
+                        ExpectedCheckOut = new DateTime(2026, 9, 23),
+                        GuestCount = 4,
+                        RoomCount = 1,
+                        PromotionId = null,
+                        ServicePackageId = familyPackage.ServicePackageId,
+                        DepositAmount = 500000m,
+                        RoomAmount = 2400000m,
+                        PackageAmount = 400000m,
+                        DiscountAmount = 0m,
+                        AdditionalServiceAmount = 300000m,
+                        TotalAmount = 3100000m,
+                        Note = "Khách đang lưu trú.",
+                        Status = BookingEnums.CheckedIn
+                    },
+                    // Booking đã hủy
+                    new Booking
+                    {
+                        CustomerId = customerBinh.CustomerId,
+                        BookingDate = new DateTime(2026, 9, 1),
+                        ExpectedCheckIn = new DateTime(2026, 9, 25),
+                        ExpectedCheckOut = new DateTime(2026, 9, 27),
+                        GuestCount = 2,
+                        RoomCount = 1,
+                        PromotionId = null,
+                        ServicePackageId = null,
+                        DepositAmount = 300000m,
+                        RoomAmount = 1000000m,
+                        PackageAmount = 0m,
+                        DiscountAmount = 0m,
+                        AdditionalServiceAmount = 0m,
+                        TotalAmount = 1000000m,
+                        Note = "Khách yêu cầu hủy đặt phòng.",
+                        Status = BookingEnums.Cancelled
+                    }
+                };
+                context.Bookings.AddRange(bookings);
+                context.SaveChanges();
+            }
+// =============================================== BOOKING DETAILS ===============================================
+            if (!context.BookingDetails.Any())
+            {
+                var booking1 = context.Bookings.First(b =>
+                    b.Customer!.User!.Email == "an@gmail.com" &&
+                    b.Status == BookingEnums.Completed);
+                var booking2 = context.Bookings.First(b =>
+                    b.Customer!.User!.Email == "binh@gmail.com" &&
+                    b.Status == BookingEnums.Confirmed);
+                var booking3 = context.Bookings.First(b =>
+                    b.Customer!.User!.Email == "cuong@gmail.com" &&
+                    b.Status == BookingEnums.Pending);
+                var booking4 = context.Bookings.First(b =>
+                    b.Customer!.User!.Email == "an@gmail.com" &&
+                    b.Status == BookingEnums.CheckedIn);
+                var booking5 = context.Bookings.First(b =>
+                    b.Customer!.User!.Email == "binh@gmail.com" &&
+                    b.Status == BookingEnums.Cancelled);
+                var room101 = context.Rooms.First(r => r.RoomName == "101");
+                var room201 = context.Rooms.First(r => r.RoomName == "201");
+                var room202 = context.Rooms.First(r => r.RoomName == "202");
+                var room301 = context.Rooms.First(r => r.RoomName == "301");
+                var room401 = context.Rooms.First(r => r.RoomName == "401");
+                var room102 = context.Rooms.First(r => r.RoomName == "102");
+                var bookingDetails = new List<BookingDetail>
+                {
+                    // Booking 1 - Completed
+                    new BookingDetail
+                    {
+                        BookingId = booking1.BookingId,
+                        RoomId = room101.RoomId,
+                        ActualCheckIn = new DateTime(2026, 8, 10, 14, 0, 0),
+                        ActualCheckOut = new DateTime(2026, 8, 12, 12, 0, 0),
+                        PricePerNight = 300000m,
+                        TotalAmount = 600000m,
+                        GuestCount = 2
+                    },
+                    // Booking 2 - 2 phòng
+                    new BookingDetail
+                    {
+                        BookingId = booking2.BookingId,
+                        RoomId = room201.RoomId,
+                        ActualCheckIn = null,
+                        ActualCheckOut = null,
+                        PricePerNight = 500000m,
+                        TotalAmount = 1500000m,
+                        GuestCount = 2
+                    },
+                    new BookingDetail
+                    {
+                        BookingId = booking2.BookingId,
+                        RoomId = room301.RoomId,
+                        ActualCheckIn = null,
+                        ActualCheckOut = null,
+                        PricePerNight = 800000m,
+                        TotalAmount = 2400000m,
+                        GuestCount = 1
+                    },
+                    // Booking 3 - Pending
+                    new BookingDetail
+                    {
+                        BookingId = booking3.BookingId,
+                        RoomId = room202.RoomId,
+                        ActualCheckIn = null,
+                        ActualCheckOut = null,
+                        PricePerNight = 500000m,
+                        TotalAmount = 1000000m,
+                        GuestCount = 2
+                    },
+                    // Booking 4 - CheckedIn
+                    new BookingDetail
+                    {
+                        BookingId = booking4.BookingId,
+                        RoomId = room301.RoomId,
+                        ActualCheckIn = new DateTime(2026, 9, 20, 14, 0, 0),
+                        ActualCheckOut = null,
+                        PricePerNight = 800000m,
+                        TotalAmount = 2400000m,
+                        GuestCount = 4
+                    },
+                    // Booking 5 - Cancelled
+                    new BookingDetail
+                    {
+                        BookingId = booking5.BookingId,
+                        RoomId = room401.RoomId,
+                        ActualCheckIn = null,
+                        ActualCheckOut = null,
+                        PricePerNight = 1200000m,
+                        TotalAmount = 2400000m,
+                        GuestCount = 2
+                    }
+                };
+                context.BookingDetails.AddRange(bookingDetails);
+                context.SaveChanges();
+            }
+// =============================================== GUEST ===============================================
+            if (!context.Guests.Any())
+            {
+                var bookingDetail1 = context.BookingDetails.First(bd =>
+                    bd.Booking!.Customer!.User!.Email == "an@gmail.com" &&
+                    bd.Booking.Status == BookingEnums.Completed &&
+                    bd.Room!.RoomName == "101");
+                var bookingDetail2 = context.BookingDetails.First(bd =>
+                    bd.Booking!.Customer!.User!.Email == "binh@gmail.com" &&
+                    bd.Booking.Status == BookingEnums.Confirmed &&
+                    bd.Room!.RoomName == "201");
+                var bookingDetail3 = context.BookingDetails.First(bd =>
+                    bd.Booking!.Customer!.User!.Email == "binh@gmail.com" &&
+                    bd.Booking.Status == BookingEnums.Confirmed &&
+                    bd.Room!.RoomName == "301");
+                var bookingDetail4 = context.BookingDetails.First(bd =>
+                    bd.Booking!.Customer!.User!.Email == "an@gmail.com" &&
+                    bd.Booking.Status == BookingEnums.CheckedIn);
+                var guests = new List<Guest>
+                {
+                    // BookingDetail 1
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail1.BookingDetailId,
+                        FullName = "Nguyễn Văn An",
+                        DateOfBirth = new DateTime(2000, 3, 15),
+                        Gender = "Nam",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000003",
+                        Email = "an@gmail.com",
+                        Note = "Khách chính"
+                    },
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail1.BookingDetailId,
+                        FullName = "Nguyễn Thị Hoa",
+                        DateOfBirth = new DateTime(2001, 6, 20),
+                        Gender = "Nữ",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000010",
+                        Email = "hoa@gmail.com"
+                    },
+                    // BookingDetail 2
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail2.BookingDetailId,
+                        FullName = "Trần Thị Bình",
+                        DateOfBirth = new DateTime(1999, 8, 20),
+                        Gender = "Nữ",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000004",
+                        Email = "binh@gmail.com",
+                        Note = "Khách chính"
+                    },
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail2.BookingDetailId,
+                        FullName = "Trần Văn Nam",
+                        DateOfBirth = new DateTime(1998, 4, 12),
+                        Gender = "Nam",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000011",
+                        Email = "nam@gmail.com"
+                    },
+                    // BookingDetail 3
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail3.BookingDetailId,
+                        FullName = "Lê Văn Minh",
+                        DateOfBirth = new DateTime(2005, 10, 10),
+                        Gender = "Nam",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000012",
+                        Email = "minh@gmail.com"
+                    },
+                    // BookingDetail 4
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail4.BookingDetailId,
+                        FullName = "Nguyễn Văn An",
+                        DateOfBirth = new DateTime(2000, 3, 15),
+                        Gender = "Nam",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000003",
+                        Email = "an@gmail.com"
+                    },
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail4.BookingDetailId,
+                        FullName = "Nguyễn Thị Lan",
+                        DateOfBirth = new DateTime(1997, 11, 8),
+                        Gender = "Nữ",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000013",
+                        Email = "lan@gmail.com"
+                    },
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail4.BookingDetailId,
+                        FullName = "Nguyễn Minh Khang",
+                        DateOfBirth = new DateTime(1995, 2, 18),
+                        Gender = "Nam",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000014",
+                        Email = "khang@gmail.com"
+                    },
+                    new Guest
+                    {
+                        BookingDetailId = bookingDetail4.BookingDetailId,
+                        FullName = "Nguyễn Minh Anh",
+                        DateOfBirth = new DateTime(2002, 7, 25),
+                        Gender = "Nữ",
+                        Nationality = "Việt Nam",
+                        PhoneNumber = "0900000015",
+                        Email = "anh@gmail.com"
+                    }
+                };
+                context.Guests.AddRange(guests);
+                context.SaveChanges();
+            }
+// =============================================== BOOKING SERVICES ===============================================
+            if (!context.BookingServices.Any())
+            {
+                var bookingCompleted = context.Bookings.First(b =>
+                    b.Status == BookingEnums.Completed);
+                var bookingCheckedIn = context.Bookings.First(b =>
+                    b.Status == BookingEnums.CheckedIn);
+                var water = context.Services.First(s => s.ServiceName == "Nước suối");
+                var breakfast = context.Services.First(s => s.ServiceName == "Ăn sáng");
+                var laundry = context.Services.First(s => s.ServiceName == "Giặt ủi");
+                var airport = context.Services.First(s => s.ServiceName == "Đưa đón sân bay");
+                var bookingServices = new List<BookingService>
+                {
+                    new BookingService
+                    {
+                        BookingId = bookingCompleted.BookingId,
+                        ServiceId = water.ServiceId,
+                        Quantity = 2,
+                        UnitPrice = 10000m,
+                        TotalAmount = 20000m
+                    },
+                    new BookingService
+                    {
+                        BookingId = bookingCompleted.BookingId,
+                        ServiceId = breakfast.ServiceId,
+                        Quantity = 1,
+                        UnitPrice = 80000m,
+                        TotalAmount = 80000m
+                    },
+                    new BookingService
+                    {
+                        BookingId = bookingCheckedIn.BookingId,
+                        ServiceId = laundry.ServiceId,
+                        Quantity = 2,
+                        UnitPrice = 50000m,
+                        TotalAmount = 100000m
+                    },
+                    new BookingService
+                    {
+                        BookingId = bookingCheckedIn.BookingId,
+                        ServiceId = airport.ServiceId,
+                        Quantity = 1,
+                        UnitPrice = 300000m,
+                        TotalAmount = 300000m
+                    }
+                };
+                context.BookingServices.AddRange(bookingServices);
+                context.SaveChanges();
+            }
+// =============================================== INVOICES ===============================================
+            if (!context.Invoices.Any())
+            {
+                var admin = context.Users
+                    .First(u => u.Email == "admin@hotel.com");
+                var bookingCompleted = context.Bookings
+                    .First(b => b.Status == BookingEnums.Completed);
+                var bookingConfirmed = context.Bookings
+                    .First(b => b.Status == BookingEnums.Confirmed);
+                var bookingCheckedIn = context.Bookings
+                    .First(b => b.Status == BookingEnums.CheckedIn);
+                var invoices = new List<Invoice>
+                {
+                    // Đã thanh toán
+                    new Invoice
+                    {
+                        BookingId = bookingCompleted.BookingId,
+                        SubTotal = 890000m,
+                        TaxAmount = 89000m,
+                        DiscountAmount = 60000m,
+                        AmountDue = 919000m,
+                        Status = InvoiceEnums.Paid,
+                        CreatedByUserId = admin.UserId
+                    },
+                    // Thanh toán một phần
+                    new Invoice
+                    {
+                        BookingId = bookingConfirmed.BookingId,
+                        SubTotal = 4300000m,
+                        TaxAmount = 430000m,
+                        DiscountAmount = 0m,
+                        AmountDue = 4730000m,
+                        Status = InvoiceEnums.PartiallyPaid,
+                        CreatedByUserId = admin.UserId
+                    },
+                    // Chưa thanh toán
+                    new Invoice
+                    {
+                        BookingId = bookingCheckedIn.BookingId,
+                        SubTotal = 3400000m,
+                        TaxAmount = 340000m,
+                        DiscountAmount = 0m,
+                        AmountDue = 3740000m,
+                        Status = InvoiceEnums.Unpaid,
+                        CreatedByUserId = admin.UserId
+                    }
+                };
+                context.Invoices.AddRange(invoices);
+                context.SaveChanges();
+            }
+// =============================================== PAYMENTS ===============================================
+            if (!context.Payments.Any())
+            {
+                var admin = context.Users
+                    .First(u => u.Email == "admin@hotel.com");
+                var invoicePaid = context.Invoices
+                    .First(i => i.Status == InvoiceEnums.Paid);
+                var invoicePartiallyPaid = context.Invoices
+                    .First(i => i.Status == InvoiceEnums.PartiallyPaid);
+                var payments = new List<Payment>
+                {
+                    // Tiền cọc
+                    new Payment
+                    {
+                        InvoiceId = invoicePaid.InvoiceId,
+                        Amount = 200000m,
+                        PaymentType = "Tiền đặt cọc",
+                        PaymentMethod = "Chuyển khoản",
+                        TransactionCode = "TXN-20260801-001",
+                        Status = PaymentEnums.Success,
+                        CreatedByUserId = admin.UserId,
+                        PaymentDate = new DateTime(2026, 8, 1)
+                    },
+                    // Thanh toán lần cuối
+                    new Payment
+                    {
+                        InvoiceId = invoicePaid.InvoiceId,
+                        Amount = 719000m,
+                        PaymentType = "Thanh toán lần cuối",
+                        PaymentMethod = "Tiền mặt",
+                        TransactionCode = "TXN-20260812-001",
+                        Status = PaymentEnums.Success,
+                        CreatedByUserId = admin.UserId,
+                        PaymentDate = new DateTime(2026, 8, 12)
+                    },
+                    // Cọc cho booking xác nhận
+                    new Payment
+                    {
+                        InvoiceId = invoicePartiallyPaid.InvoiceId,
+                        Amount = 500000m,
+                        PaymentType = "Tiền đặt cọc",
+                        PaymentMethod = "Chuyển khoản",
+                        TransactionCode = "TXN-20260901-001",
+                        Status = PaymentEnums.Success,
+                        CreatedByUserId = admin.UserId,
+                        PaymentDate = new DateTime(2026, 9, 1)
+                    },
+                    // Thanh toán lần cuối chưa thành công
+                    new Payment
+                    {
+                        InvoiceId = invoicePartiallyPaid.InvoiceId,
+                        Amount = 1000000m,
+                        PaymentType = "Thanh toán lần cuối",
+                        PaymentMethod = "Chuyển khoản",
+                        TransactionCode = "TXN-20260902-001",
+                        Status = PaymentEnums.Failed,
+                        CreatedByUserId = admin.UserId,
+                        PaymentDate = new DateTime(2026, 9, 2)
+                    }
+                };
+                context.Payments.AddRange(payments);
+                context.SaveChanges();
+            }
+// =============================================== CANCELLATIONS ===============================================
+            if (!context.Cancellations.Any())
+            {
+                var cancelledBooking = context.Bookings
+                    .First(b => b.Status == BookingEnums.Cancelled);
+                var policy = context.CancellationPolicies
+                    .First(p => p.PolicyName == "Hủy trước 3 ngày");
+                var cancellation = new Cancellation
+                {
+                    BookingId = cancelledBooking.BookingId,
+                    CancellationPolicyId = policy.CancellationPolicyId,
+                    Reason = "Khách có việc đột xuất và yêu cầu hủy phòng.",
+                    RefundPercentage = 70m,
+                    RefundAmount = 210000m,
+                    Status = CancellationEnums.Approved
+                };
+                context.Cancellations.Add(cancellation);
+                context.SaveChanges();
+            }
+// =============================================== REVIEWS ===============================================
+            if (!context.Reviews.Any())
+            {
+                var customerAn = context.Customers
+                    .First(c => c.User!.Email == "an@gmail.com");
+                var customerBinh = context.Customers
+                    .First(c => c.User!.Email == "binh@gmail.com");
+                var bookingCompleted = context.Bookings
+                    .First(b => b.Status == BookingEnums.Completed);
+                var room101 = context.Rooms
+                    .First(r => r.RoomName == "101");
+                var room201 = context.Rooms
+                    .First(r => r.RoomName == "201");
+                var reviews = new List<Review>
+                {
+                    new Review
+                    {
+                        CustomerId = customerAn.CustomerId,
+                        RoomId = room101.RoomId,
+                        BookingId = bookingCompleted.BookingId,
+                        Rating = 5,
+                        Comment = "Phòng sạch sẽ, nhân viên thân thiện.",
+                        Status = ReviewEnums.Approved
+                    },
+                    new Review
+                    {
+                        CustomerId = customerBinh.CustomerId,
+                        RoomId = room201.RoomId,
+                        BookingId = bookingCompleted.BookingId,
+                        Rating = 4,
+                        Comment = "Phòng đẹp và đầy đủ tiện nghi.",
+                        Status = ReviewEnums.Pending
+                    },
+                    new Review
+                    {
+                        CustomerId = customerAn.CustomerId,
+                        RoomId = room101.RoomId,
+                        BookingId = bookingCompleted.BookingId,
+                        Rating = 2,
+                        Comment = "Một số thiết bị trong phòng cần được kiểm tra.",
+                        Status = ReviewEnums.Rejected
+                    }
+                };
+                context.Reviews.AddRange(reviews);
+                context.SaveChanges();
+            }
+// =============================================== FAVORITE ROOMS ===============================================
+            if (!context.FavoriteRooms.Any())
+            {
+                var customerAn = context.Customers
+                    .First(c => c.User!.Email == "an@gmail.com");
+                var customerBinh = context.Customers
+                    .First(c => c.User!.Email == "binh@gmail.com");
+                var customerCuong = context.Customers
+                    .First(c => c.User!.Email == "cuong@gmail.com");
+                var room201 = context.Rooms.First(r => r.RoomName == "201");
+                var room301 = context.Rooms.First(r => r.RoomName == "301");
+                var room401 = context.Rooms.First(r => r.RoomName == "401");
+                var room102 = context.Rooms.First(r => r.RoomName == "102");
+                var favoriteRooms = new List<FavoriteRoom>
+                {
+                    new FavoriteRoom
+                    {
+                        CustomerId = customerAn.CustomerId,
+                        RoomId = room201.RoomId
+                    },
+                    new FavoriteRoom
+                    {
+                        CustomerId = customerAn.CustomerId,
+                        RoomId = room301.RoomId
+                    },
+                    new FavoriteRoom
+                    {
+                        CustomerId = customerBinh.CustomerId,
+                        RoomId = room401.RoomId
+                    },
+                    new FavoriteRoom
+                    {
+                        CustomerId = customerCuong.CustomerId,
+                        RoomId = room102.RoomId
+                    }
+                };
+                context.FavoriteRooms.AddRange(favoriteRooms);
+                context.SaveChanges();
+            }
+// =============================================== AUDIT LOGS ===============================================
+            if (!context.AuditLogs.Any())
+            {
+                var admin = context.Users
+                    .First(u => u.Email == "admin@hotel.com");
+                var staff = context.Users
+                    .First(u => u.Email == "staff@hotel.com");
+                var auditLogs = new List<AuditLog>
+                {
+                    new AuditLog
+                    {
+                        UserId = admin.UserId,
+                        Action = "Đăng nhập",
+                        TableName = "Users",
+                        RecordId = admin.UserId,
+                        OldValue = null,
+                        NewValue = "Đăng nhập hệ thống"
+                    },
+                    new AuditLog
+                    {
+                        UserId = staff.UserId,
+                        Action = "Thêm",
+                        TableName = "Bookings",
+                        RecordId = 1,
+                        OldValue = null,
+                        NewValue = "{\"Status\":\"Pending\",\"GuestCount\":2,\"RoomCount\":1}"
+                    },
+                    new AuditLog
+                    {
+                        UserId = staff.UserId,
+                        Action = "Sửa",
+                        TableName = "Bookings",
+                        RecordId = 2,
+                        OldValue = "{\"Status\":\"Pending\"}",
+                        NewValue = "{\"Status\":\"Confirmed\"}"
+                    },
+                    new AuditLog
+                    {
+                        UserId = admin.UserId,
+                        Action = "Sửa",
+                        TableName = "Rooms",
+                        RecordId = 3,
+                        OldValue = "{\"Status\":\"Maintenance\"}",
+                        NewValue = "{\"Status\":\"Available\"}"
+                    },
+                    new AuditLog
+                    {
+                        UserId = staff.UserId,
+                        Action = "Xóa",
+                        TableName = "ServicePackages",
+                        RecordId = 2,
+                        OldValue = "{\"IsDeleted\":\"Active\"}",
+                        NewValue = "{\"IsDeleted\":\"Inactive\"}"
+                    },
+                    new AuditLog
+                    {
+                        UserId = admin.UserId,
+                        Action = "Đăng xuất",
+                        TableName = "Users",
+                        RecordId = admin.UserId,
+                        OldValue = null,
+                        NewValue = "Đăng xuất hệ thống"
+                    }
+                };
+                context.AuditLogs.AddRange(auditLogs);
+                context.SaveChanges();
+            }
         }
     }
 }

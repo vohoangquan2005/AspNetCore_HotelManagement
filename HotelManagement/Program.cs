@@ -32,6 +32,7 @@ builder.Services.AddScoped<ApplyPromotionService>();
 builder.Services.AddScoped<CancellationPolicyService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<BookingDetailService>();
+builder.Services.AddScoped<GuestService>();
 
 var app = builder.Build();
 

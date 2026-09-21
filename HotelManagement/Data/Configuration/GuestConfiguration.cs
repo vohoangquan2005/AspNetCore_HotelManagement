@@ -34,9 +34,6 @@ namespace HotelManagement.Data.Configuration
             // Email
             builder.Property(g => g.Email)
                    .HasMaxLength(100);
-            // GuestType
-            builder.Property(g => g.GuestType)
-                   .HasMaxLength(20);
             // Note
             builder.Property(g => g.Note)
                    .HasMaxLength(500);

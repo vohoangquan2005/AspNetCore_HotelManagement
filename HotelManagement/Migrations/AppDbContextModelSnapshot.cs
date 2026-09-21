@@ -469,10 +469,6 @@ namespace HotelManagement.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("GuestType")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<string>("Nationality")
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HotelManagement.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260920021851_Db_v3")]
-    partial class Db_v3
+    [Migration("20260921082930_Db_v4")]
+    partial class Db_v4
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -469,10 +469,6 @@ namespace HotelManagement.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Gender")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("GuestType")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 

@@ -78,7 +78,17 @@ namespace HotelManagement.Services
             if (exists)
                 throw new ConflictException("Mã đặt phòng đã đặt phòng này rồi!");
         }
-
+        // Check GuestCount của BookingDetail có vượt quá Capacity của Room không?
+        private async Task CheckRoomCapacity(int roomId, int guestCount)
+        {
+            var room = await _context.Rooms
+                .FirstOrDefaultAsync(r => r.RoomId == roomId);
+            if (room is null)
+                throw new NotFoundException("Phòng không tồn tại!");
+            if (guestCount > room.Capacity)
+                throw new BadRequestException(
+                    "Số lượng khách vượt quá sức chứa của phòng!");
+        }
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
@@ -114,6 +124,7 @@ namespace HotelManagement.Services
             await CheckBookingId(dto.BookingId);
             await CheckRoomId(dto.RoomId);
             await CheckBookingRoom(dto.RoomId, dto.BookingId);
+            await CheckRoomCapacity(dto.RoomId, dto.GuestCount);
             var bookingDetail = MapToEntity(dto);
             await _context.BookingDetails.AddAsync(bookingDetail);
             await _context.SaveChangesAsync();
@@ -127,7 +138,8 @@ namespace HotelManagement.Services
             await CheckBookingId(dto.BookingId);
             await CheckRoomId(dto.RoomId);
             await CheckBookingRoom(dto.RoomId, dto.BookingId, id);
-            UpdateEntity(bookingDetail!, dto);
+            await CheckRoomCapacity(dto.RoomId, dto.GuestCount);
+            UpdateEntity(bookingDetail, dto);
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);
         }
