@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HotelManagement.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260921082930_Db_v4")]
-    partial class Db_v4
+    [Migration("20260921144130_Db_v5")]
+    partial class Db_v5
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

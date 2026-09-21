@@ -21,7 +21,7 @@ namespace HotelManagement.Data.Configuration
             // IsPrimary
             builder.Property(r => r.IsPrimary)
                    .IsRequired()
-                   .HasDefaultValue(0m);
+                   .HasDefaultValue(0);
             // CreateAt
             builder.Property(r => r.CreateAt)
                    .HasDefaultValueSql("GETDATE()");

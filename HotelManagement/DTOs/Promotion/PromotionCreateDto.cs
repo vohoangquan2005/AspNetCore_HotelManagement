@@ -19,8 +19,6 @@ namespace HotelManagement.DTOs.Promotion
         public decimal? MaxDisCountAmount { get; set; } // Giá tiền tối đa được giảm
         [Range(0, int.MaxValue, ErrorMessage = "Giới hạn sử dụng không được âm!")]
         public int? UsageLimit { get; set; }    // Giới hạn số lượng áp dụng khuyến mãi
-        [Range(0, int.MaxValue, ErrorMessage = "Số lượng đã sử dụng không được âm!")]
-        public int? UsedCount { get; set; } // Số lượng đã sử dụng
         [Required(ErrorMessage = "Vui lòng nhập thời gian bắt đầu áp dụng khuyến mãi!")]
         public DateTime StartDate { get; set; } // Ngày bắt đầu áp dụng
         [Required(ErrorMessage = "Vui lòng nhập thời gian bắt đầu áp dụng khuyến mãi!")]

@@ -25,6 +25,7 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<RoomTypeService>();
 builder.Services.AddScoped<RoomService>();
+builder.Services.AddScoped<RoomImageService>();
 builder.Services.AddScoped<ServiceService>();
 builder.Services.AddScoped<ServicePackageService>();
 builder.Services.AddScoped<PromotionService>();
@@ -34,6 +35,7 @@ builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<BookingDetailService>();
 builder.Services.AddScoped<GuestService>();
 builder.Services.AddScoped<BookingServiceService>();
+
 
 var app = builder.Build();
 

@@ -44,7 +44,6 @@ namespace HotelManagement.Services
                 MinAmount = dto.MinAmount,
                 MaxDisCountAmount = dto.MaxDisCountAmount,
                 UsageLimit = dto.UsageLimit,
-                UsedCount = dto.UsedCount,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate
             };
@@ -58,7 +57,6 @@ namespace HotelManagement.Services
             promotion.MinAmount = dto.MinAmount;
             promotion.MaxDisCountAmount = dto.MaxDisCountAmount;
             promotion.UsageLimit = dto.UsageLimit;
-            promotion.UsedCount = dto.UsedCount;
             promotion.StartDate = dto.StartDate;
             promotion.EndDate = dto.EndDate;
         }
@@ -79,9 +77,9 @@ namespace HotelManagement.Services
                 throw new ConflictException("Tên khuyến mãi đã tồn tại!");
         }
         // Check Date
-        private void CheckDate(DateTime startDate, DateTime endDate)
+        private void CheckDate(DateTime startDate, DateTime endDate, bool isCreate = false)
         {
-            if (startDate < DateTime.Today)
+            if (isCreate && startDate < DateTime.Today)
                 throw new BadRequestException("Ngày bắt đầu áp dụng không được trước hôm nay!");
             if (endDate < startDate)
                 throw new BadRequestException("Ngày kết thúc áp dụng không được trước ngày bắt đầu áp dụng!");
@@ -145,7 +143,7 @@ namespace HotelManagement.Services
         {
             await PromotionCodeExists(dto.PromotionCode!);
            await PromotionNameExists(dto.PromotionName!);
-            CheckDate(dto.StartDate, dto.EndDate);
+            CheckDate(dto.StartDate, dto.EndDate, true);
             var promotion = MapToEntity(dto);
             await _context.Promotions.AddAsync(promotion);
             await _context.SaveChangesAsync();
@@ -158,7 +156,7 @@ namespace HotelManagement.Services
             if (promotion is null) return null;
             await PromotionCodeExists(dto.PromotionCode!, id);
             await PromotionNameExists(dto.PromotionName!, id);
-            CheckDate(dto.StartDate, dto.EndDate);
+            CheckDate(dto.StartDate, dto.EndDate, false);
             UpdateEntity(promotion, dto);
             await _context.SaveChangesAsync();
             return MapToResponseDto(promotion);
