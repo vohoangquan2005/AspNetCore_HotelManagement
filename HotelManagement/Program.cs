@@ -39,6 +39,7 @@ builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<CancellationService>();
 builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<FavoriteRoomService>();
 
 
 var app = builder.Build();

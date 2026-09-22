@@ -50,28 +50,28 @@ namespace HotelManagement.Services
             review.Rating = dto.Rating;
             review.Comment = dto.Comment;
         }
-        // Check CustomerId
+        // Check CustomerId có tồn tại trong bảng Customer không?
         private async Task CheckCustomerId(int customerId)
         {
             var exists = await _context.Customers.AnyAsync(c => c.CustomerId == customerId);
             if (!exists)
                 throw new NotFoundException("Mã khách hàng không hợp lệ!");
         }
-        // Check RoomId
+        // Check RoomId có tồn tại trong bảng Room không
         private async Task CheckRoomId(int roomId)
         {
             var exists = await _context.Rooms.AnyAsync(r => r.RoomId == roomId);
             if (!exists)
                 throw new NotFoundException("Mã phòng không hợp lệ!");
         }
-        // Check BookingId
+        // Check BookingId có tồn tại trong bảng Booking không
         private async Task CheckBookingId(int bookingId)
         {
             var exists = await _context.Bookings.AnyAsync(b => b.BookingId == bookingId);
             if (!exists)
                 throw new NotFoundException("Mã đặt phòng không hợp lệ!");
         }
-        // Kiểm tra Customer + Room + Booking có liên quan với nhau không
+        // Check Customer + Room + Booking có liên quan với nhau không
         private async Task CheckCustomerBookingRoom(int customerId, int roomId, int bookingId)
         {
             var exists = await _context.Bookings
@@ -81,7 +81,7 @@ namespace HotelManagement.Services
             if (!exists)
                 throw new BadRequestException("Khách hàng, phòng và đặt phòng không hợp lệ!");
         }
-        // Kiểm tra đã đánh giá phòng trong Booking này chưa
+        // Check đã đánh giá phòng trong Booking này chưa
         private async Task CheckReviewExists(int customerId, int roomId, int bookingId)
         {
             var exists = await _context.Reviews.AnyAsync(r =>r.CustomerId == customerId 
@@ -98,7 +98,7 @@ namespace HotelManagement.Services
         {
             var reviews = await _context.Reviews
                                         .Include(r => r.Customer)
-                                            .ThenInclude(c => c.User)
+                                            .ThenInclude(c => c!.User)
                                         .Include(r => r.Room)
                                         .Select(r => new ReviewResponseDto
                                         {
@@ -120,7 +120,7 @@ namespace HotelManagement.Services
         public async Task<ReviewResponseDto?> GetByIdAsync(int id)
         {
             var review = await _context.Reviews.Include(r => r.Customer)
-                                                   .ThenInclude(c => c.User)
+                                                   .ThenInclude(c => c!.User)
                                                .Include(r => r.Room)
                                                .FirstOrDefaultAsync(r => r.ReviewId == id);
             if (review is null) return null;

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace HotelManagement.Data.Configuration
 {
-    public class FovoriteRoomConfiguration : IEntityTypeConfiguration<FavoriteRoom>
+    public class FavoriteRoomConfiguration : IEntityTypeConfiguration<FavoriteRoom>
     {
         public void Configure(EntityTypeBuilder<FavoriteRoom> builder)
         {
