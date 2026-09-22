@@ -40,6 +40,7 @@ builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<CancellationService>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<FavoriteRoomService>();
+builder.Services.AddScoped<AuditLogService>();
 
 
 var app = builder.Build();
