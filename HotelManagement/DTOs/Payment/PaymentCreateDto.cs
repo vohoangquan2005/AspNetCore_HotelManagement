@@ -14,9 +14,9 @@ namespace HotelManagement.DTOs.Payment
         [Required(ErrorMessage = "Vui lòng nhập loại thanh toán!")]
         public PaymentTypeEnums PaymentType { get; set; } // "Tiền đặt cọc" "Thanh toán lần cuối" "Tiền hoàn trả"
         [Required(ErrorMessage = "Vui lòng nhập phương thức thanh toán!")]
-        [StringLength(30, ErrorMessage = "Phương thức thanh toán tối đa 30 ký tự!")]
+        [StringLength(30, ErrorMessage = "Phương thức thanh toán không vượt quá 30 ký tự!")]
         public string? PaymentMethod { get; set; }
-        [StringLength(100, ErrorMessage = "Mã giao dịch tối đa 100 ký tự!")]
+        [StringLength(100, ErrorMessage = "Mã giao dịch không vượt quá 100 ký tự!")]
         public string? TransactionCode { get; set; }
         public PaymentEnums Status { get; set; } // "Đang xử lý" "Thành công" "Thất bại"
         [Required(ErrorMessage = "Vui lòng nhập mã người tạo thanh toán!")]

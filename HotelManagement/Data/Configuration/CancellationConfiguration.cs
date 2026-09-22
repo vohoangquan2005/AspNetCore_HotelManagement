@@ -39,9 +39,6 @@ namespace HotelManagement.Data.Configuration
             // CreateAt
             builder.Property(c => c.CreateAt)
                    .HasDefaultValueSql("GETDATE()");
-            // UpdateAt
-            builder.Property(c => c.UpdateAt)
-                   .HasDefaultValueSql("GETDATE()");
             // Relationships
             // Booking 1 - N Cancellation
             builder.HasOne(c => c.Booking)

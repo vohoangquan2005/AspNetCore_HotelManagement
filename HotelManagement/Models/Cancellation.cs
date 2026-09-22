@@ -13,7 +13,6 @@ namespace HotelManagement.Models
         public decimal RefundAmount { get; set; }   // Số tiền hoàn trả
         public CancellationEnums Status { get; set; }
         public DateTime? CreateAt { get; set; }
-        public DateTime? UpdateAt { get; set; }
         // Relationship
         public Booking? Booking { get; set; }
         public CancellationPolicy? CancellationPolicy { get; set; }

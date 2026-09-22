@@ -37,6 +37,7 @@ builder.Services.AddScoped<GuestService>();
 builder.Services.AddScoped<BookingServiceService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<CancellationService>();
 
 
 var app = builder.Build();

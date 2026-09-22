@@ -8,7 +8,7 @@ namespace HotelManagement.DTOs.Payment
         [Required(ErrorMessage = "Vui lòng nhập trạng thái thanh toán!")]
         public PaymentEnums Status { get; set; }
         public DateTime? PaymentDate { get; set; }
-        [StringLength(100, ErrorMessage = "Mã giao dịch tối đa 100 ký tự!")]
+        [StringLength(100, ErrorMessage = "Mã giao dịch không vượt quá 100 ký tự!")]
         public string? TransactionCode { get; set; }
     }
 }
