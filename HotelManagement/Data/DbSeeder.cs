@@ -979,7 +979,7 @@ namespace HotelManagement.Data
                     {
                         InvoiceId = invoicePaid.InvoiceId,
                         Amount = 200000m,
-                        PaymentType = "Tiền đặt cọc",
+                        PaymentType = PaymentTypeEnums.Deposit,
                         PaymentMethod = "Chuyển khoản",
                         TransactionCode = "TXN-20260801-001",
                         Status = PaymentEnums.Success,
@@ -991,7 +991,7 @@ namespace HotelManagement.Data
                     {
                         InvoiceId = invoicePaid.InvoiceId,
                         Amount = 713000m,
-                        PaymentType = "Thanh toán lần cuối",
+                        PaymentType = PaymentTypeEnums.Payment,
                         PaymentMethod = "Tiền mặt",
                         TransactionCode = "TXN-20260812-001",
                         Status = PaymentEnums.Success,
@@ -1003,7 +1003,7 @@ namespace HotelManagement.Data
                     {
                         InvoiceId = invoicePartiallyPaid.InvoiceId,
                         Amount = 500000m,
-                        PaymentType = "Tiền đặt cọc",
+                        PaymentType = PaymentTypeEnums.Deposit,
                         PaymentMethod = "Chuyển khoản",
                         TransactionCode = "TXN-20260901-001",
                         Status = PaymentEnums.Success,
@@ -1015,7 +1015,7 @@ namespace HotelManagement.Data
                     {
                         InvoiceId = invoicePartiallyPaid.InvoiceId,
                         Amount = 1000000m,
-                        PaymentType = "Thanh toán lần cuối",
+                        PaymentType = PaymentTypeEnums.Payment,
                         PaymentMethod = "Chuyển khoản",
                         TransactionCode = "TXN-20260902-001",
                         Status = PaymentEnums.Failed,

@@ -578,8 +578,10 @@ namespace HotelManagement.Migrations
                         .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("PaymentType")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Payment");
 
                     b.Property<string>("Status")
                         .IsRequired()

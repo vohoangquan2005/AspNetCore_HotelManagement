@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HotelManagement.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260921154252_Db_v6")]
-    partial class Db_v6
+    [Migration("20260922155744_Db_v7")]
+    partial class Db_v7
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -581,8 +581,10 @@ namespace HotelManagement.Migrations
                         .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("PaymentType")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Payment");
 
                     b.Property<string>("Status")
                         .IsRequired()

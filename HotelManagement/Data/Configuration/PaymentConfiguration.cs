@@ -22,7 +22,9 @@ namespace HotelManagement.Data.Configuration
                    .HasPrecision(18, 2);
             // PaymentType
             builder.Property(p => p.PaymentType)
-                   .HasMaxLength(30);
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasDefaultValue(PaymentTypeEnums.Payment);
             // PaymentMethod
             builder.Property(p => p.PaymentMethod)
                    .HasMaxLength(30);

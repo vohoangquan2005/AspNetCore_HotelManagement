@@ -8,7 +8,7 @@ namespace HotelManagement.Models
         public int PaymentId { get; set; }
         public int InvoiceId { get; set; }
         public decimal Amount { get; set; }
-        public string? PaymentType { get; set; } // "Tiền đặt cọc" "Thanh toán lần cuối" "Tiền hoàn trả"
+        public PaymentTypeEnums PaymentType { get; set; } 
         public string? PaymentMethod { get; set; }
         public string? TransactionCode { get; set; }
         public PaymentEnums Status { get; set; } // "Đang xử lý" "Thành công" "Thất bại"

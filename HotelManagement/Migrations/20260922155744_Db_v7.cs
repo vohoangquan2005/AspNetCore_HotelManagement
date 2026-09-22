@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace HotelManagement.Migrations
 {
     /// <inheritdoc />
-    public partial class Db_v6 : Migration
+    public partial class Db_v7 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -560,7 +560,7 @@ namespace HotelManagement.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     InvoiceId = table.Column<int>(type: "int", nullable: false),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    PaymentType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true),
+                    PaymentType = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Payment"),
                     PaymentMethod = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true),
                     TransactionCode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Pending"),

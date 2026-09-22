@@ -45,7 +45,7 @@ namespace HotelManagement.Services
             decimal paidAmount = 0;
             foreach (var payment in payments)
             {
-                if (payment.PaymentType == "Tiền hoàn trả") paidAmount -= payment.Amount;
+                if (payment.PaymentType == PaymentTypeEnums.Refund) paidAmount -= payment.Amount;
                 else paidAmount += payment.Amount;
             }
             return paidAmount;
