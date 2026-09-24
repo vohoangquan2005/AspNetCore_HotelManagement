@@ -1,6 +1,7 @@
 using HotelManagement.Data;
 using HotelManagement.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Controllers
 builder.Services.AddControllers();
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+});
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -47,9 +53,15 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 // Middleware
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Hotel Management API v1");
+    });
 }
 
 app.UseHttpsRedirection();

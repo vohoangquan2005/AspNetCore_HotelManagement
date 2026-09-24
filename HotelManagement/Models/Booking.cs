@@ -22,6 +22,7 @@ namespace HotelManagement.Models
         public decimal TotalAmount { get; set; }        // Tổng số tiền của tất cả chi tiết phòng
         public string? Note { get; set; }
         public BookingEnums Status { get; set; }
+        public ActiveEnums IsDeleted { get; set; }
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
         //Relationship

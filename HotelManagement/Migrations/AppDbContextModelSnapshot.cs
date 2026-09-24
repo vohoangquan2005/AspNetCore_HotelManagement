@@ -140,6 +140,12 @@ namespace HotelManagement.Migrations
                     b.Property<int>("GuestCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
+
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");

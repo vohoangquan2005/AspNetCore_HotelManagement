@@ -1050,14 +1050,15 @@ namespace HotelManagement.Data
             {
                 var customerAn = context.Customers
                     .First(c => c.User!.Email == "an@gmail.com");
-                var customerBinh = context.Customers
-                    .First(c => c.User!.Email == "binh@gmail.com");
+
                 var bookingCompleted = context.Bookings
-                    .First(b => b.Status == BookingEnums.Completed);
+                    .First(b =>
+                        b.Customer!.User!.Email == "an@gmail.com" &&
+                        b.Status == BookingEnums.Completed);
+
                 var room101 = context.Rooms
                     .First(r => r.RoomName == "101");
-                var room201 = context.Rooms
-                    .First(r => r.RoomName == "201");
+
                 var reviews = new List<Review>
                 {
                     new Review
@@ -1069,15 +1070,7 @@ namespace HotelManagement.Data
                         Comment = "Phòng sạch sẽ, nhân viên thân thiện.",
                         Status = ReviewEnums.Approved
                     },
-                    new Review
-                    {
-                        CustomerId = customerBinh.CustomerId,
-                        RoomId = room201.RoomId,
-                        BookingId = bookingCompleted.BookingId,
-                        Rating = 4,
-                        Comment = "Phòng đẹp và đầy đủ tiện nghi.",
-                        Status = ReviewEnums.Pending
-                    },
+
                     new Review
                     {
                         CustomerId = customerAn.CustomerId,
@@ -1088,6 +1081,7 @@ namespace HotelManagement.Data
                         Status = ReviewEnums.Rejected
                     }
                 };
+
                 context.Reviews.AddRange(reviews);
                 context.SaveChanges();
             }

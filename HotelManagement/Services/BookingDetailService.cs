@@ -30,20 +30,6 @@ namespace HotelManagement.Services
                 CreateAt = bookingDetail.CreateAt
             };
         }
-        // Chuyển BookingDetailCreateDto -> BookingDetail
-        private BookingDetail MapToEntity(BookingDetailCreateDto dto)
-        {
-            return new BookingDetail
-            {
-                BookingId = dto.BookingId,
-                RoomId = dto.RoomId,
-                ActualCheckIn = dto.ActualCheckIn,
-                ActualCheckOut = dto.ActualCheckOut,
-                PricePerNight = dto.PricePerNight,
-                GuestCount = dto.GuestCount,
-                TotalAmount = CalculateTotalAmount(dto.ActualCheckIn, dto.ActualCheckOut, dto.PricePerNight)
-            };
-        }
         // Update BookingDetail từ BookingDetailUpdateDto
         private void UpdateEntity(BookingDetail bookingDetail, BookingDetailUpdateDto dto)
         {
@@ -133,19 +119,6 @@ namespace HotelManagement.Services
                                                              .FirstOrDefaultAsync(bd => bd.BookingDetailId == id);
             if (bookingDetail is null) return null;
             return MapToResponseDto(bookingDetail);
-        }
-        // Create 
-        public async Task<BookingDetailResponseDto> CreateAsync(BookingDetailCreateDto dto)
-        {
-            await CheckBookingId(dto.BookingId);
-            await CheckRoomId(dto.RoomId);
-            await CheckBookingRoom(dto.RoomId, dto.BookingId);
-            await CheckRoomCapacity(dto.RoomId, dto.GuestCount);
-            CheckDate(dto.ActualCheckIn, dto.ActualCheckOut);
-            var bookingDetail = MapToEntity(dto);
-            await _context.BookingDetails.AddAsync(bookingDetail);
-            await _context.SaveChangesAsync();
-            return (await GetByIdAsync(bookingDetail.BookingDetailId))!;
         }
         // Update
         public async Task<BookingDetailResponseDto?> UpdateAsync(int id, BookingDetailUpdateDto dto)

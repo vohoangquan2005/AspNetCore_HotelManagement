@@ -51,9 +51,7 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> SoftDelete(int id)
         {
             var deleteRoom = await _roomService.SoftDeleteAsync(id);
-
-            if (deleteRoom is null)
-                return NotFound();
+            if (deleteRoom is null) return NotFound();
             return NoContent();
         }
         [HttpPatch("restore/{id}")]

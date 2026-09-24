@@ -67,6 +67,11 @@ namespace HotelManagement.Data.Configuration
                    .IsRequired()
                    .HasConversion<string>()
                    .HasDefaultValue(BookingEnums.Pending);
+            // IsDeleted
+            builder.Property(r => r.IsDeleted)
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasDefaultValue(ActiveEnums.Active);
             // CreateAt
             builder.Property(b => b.CreateAt)
                    .HasDefaultValueSql("GETDATE()");

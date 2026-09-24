@@ -1,4 +1,5 @@
 ﻿using HotelManagement.DTOs.Booking;
+using HotelManagement.Enums;
 using HotelManagement.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,6 +18,12 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> GetAll()
         {
             var bookings = await _bookingService.GetAllAsync();
+            return Ok(bookings);
+        }
+        [HttpGet("deleted")]
+        public async Task<IActionResult> GetDeleted()
+        {
+            var bookings = await _bookingService.GetDeletedAsync();
             return Ok(bookings);
         }
         [HttpGet("{id}")]
@@ -39,6 +46,20 @@ namespace HotelManagement.Controllers
         {
             var updateBooking = await _bookingService.UpdateAsync(id, dto);
             if (updateBooking is null) return NotFound();
+            return Ok(updateBooking);
+        }
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> SetStatus(int id, BookingEnums status)
+        {
+            var booking = await _bookingService.SetStatusAsync(id, status);
+            if (booking is null) return NotFound();
+            return Ok(booking);
+        }
+        [HttpPatch("soft-deleted/{id}")]
+        public async Task<IActionResult> SoftDeleted(int id)
+        {
+            var deleteBooking = await _bookingService.SoftDeleteAsync(id);
+            if (!deleteBooking) return NotFound();
             return NoContent();
         }
         [HttpDelete("{id}")]
@@ -46,6 +67,13 @@ namespace HotelManagement.Controllers
         {
             var deleteBooking = await _bookingService.DeleteAsync(id);
             if (!deleteBooking) return NotFound();
+            return NoContent();
+        }
+        [HttpPatch("restore/{id}")]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var restored = await _bookingService.RestoreAsync(id);
+            if (!restored) return NotFound();
             return NoContent();
         }
     }

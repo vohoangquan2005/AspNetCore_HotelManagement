@@ -26,14 +26,6 @@ namespace HotelManagement.Controllers
             if (booking is null) return NotFound();
             return Ok(booking);
         }
-        [HttpPost]
-        public async Task<IActionResult> Create(BookingDetailCreateDto dto)
-        {
-            var createBookingDetail = await _bookingDetailService.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById),
-                                    new { id = createBookingDetail.BookingDetailId },
-                                    createBookingDetail);
-        }
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, BookingDetailUpdateDto dto)
         {

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HotelManagement.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260922164704_Db_v8")]
-    partial class Db_v8
+    [Migration("20260924084358_Db_v9")]
+    partial class Db_v9
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -142,6 +142,12 @@ namespace HotelManagement.Migrations
 
                     b.Property<int>("GuestCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("IsDeleted")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<string>("Note")
                         .HasMaxLength(500)
