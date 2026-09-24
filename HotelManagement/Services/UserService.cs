@@ -62,14 +62,18 @@ namespace HotelManagement.Services
             user.PhoneNumber = dto.PhoneNumber;
             user.Avatar = dto.Avatar;
         }
-        // Check RoleId đã được tạo trong bảng Roles chưa?
-        private async Task CheckRoleId(int roleId)
+        // ===========================================================
+        // =                         VALIDATE                        =
+        // ===========================================================
+        // Lấy Role đang Active
+        private async Task<Role> GetActiveRole(int roleId)
         {
-            var exists = await _context.Roles
-                                       .AnyAsync(r => r.RoleId == roleId
-                                                   && r.IsDeleted == ActiveEnums.Active);
-            if (!exists)
+            var role = await _context.Roles
+                                     .FirstOrDefaultAsync(r => r.RoleId == roleId &&
+                                                               r.IsDeleted == ActiveEnums.Active);
+            if (role is null)
                 throw new NotFoundException("Vai trò không tồn tại hoặc đã bị xóa!");
+            return role;
         }
         // Check trùng Email
         private async Task EmailExists(string email, int? userId = null)
@@ -97,6 +101,62 @@ namespace HotelManagement.Services
             {
                 throw new BadRequestException("Ngày sinh không được lớn hơn ngày hiện tại!");
             }
+        }
+        // Check CCCD
+        private void CheckCCCD(string? cccd)
+        {
+            if (cccd is not null && !cccd.All(char.IsDigit))
+                throw new BadRequestException("CCCD phải là số!");
+        }
+        // Check trùng CCCD
+        private async Task CCCDExists(string? cccd, int? customerId = null)
+        {
+            if (string.IsNullOrWhiteSpace(cccd)) return;
+            var exists = await _context.Customers
+                                       .AnyAsync(c => c.CCCD == cccd 
+                                                  && (customerId == null || customerId != c.CustomerId));
+            if (exists)
+                throw new ConflictException("CCCD đã tồn tại!");
+        }
+        // ===========================================================
+        // =                       CUSTOMER                          =
+        // ===========================================================
+        // Create Customer
+        private async Task CreateCustomer(int userId, CustomerCreateDto dto)
+        {
+            CheckCCCD(dto.CCCD);
+            await CCCDExists(dto.CCCD);
+            var customer = new Customer
+            {
+                UserId = userId,
+                CCCD = dto.CCCD,
+                Nationality = dto.Nationality,
+            };
+            await _context.Customers.AddAsync(customer);
+        }
+        // Update Customer
+        private async Task UpdateCustomer(int userId, CustomerUpdateDto dto)
+        {
+            CheckCCCD(dto.CCCD);
+            var customer = await _context.Customers
+                                         .FirstOrDefaultAsync(c => c.UserId == userId);
+            // User chưa có Customer -> tạo mới
+            if (customer is null)
+            {
+                await CCCDExists(dto.CCCD);
+                customer = new Customer
+                {
+                    UserId = userId,
+                    CCCD = dto.CCCD,
+                    Nationality = dto.Nationality
+                };
+                await _context.Customers.AddAsync(customer);
+                return;
+            }
+            // User đã có Customer -> cập nhật
+            await CCCDExists(dto.CCCD, customer.CustomerId);
+            customer.CCCD = dto.CCCD;
+            customer.Nationality = dto.Nationality;
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -159,32 +219,72 @@ namespace HotelManagement.Services
             return MapToResponseDto(user);
         }
         // Create
-        public async Task<UserResponseDto> CreateAsync(UserCreateDto dto)
+        public async Task<UserResponseDto> CreateAsync(UserCreateDto userCreateDto, CustomerCreateDto? customerCreateDto = null)
         {
-            await CheckRoleId(dto.RoleId);
-            await EmailExists(dto.Email!); // ! dùng để chắc chắn rằng email không null cho compiler đừng cảnh báo
-            await PhoneNumberExists(dto.PhoneNumber);
-            CheckDateOfBirth(dto.DateOfBirth);
-            var user = MapToEntity(dto);
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
-            return (await GetByIdAsync(user.UserId))!;
+            await using var transaction = _context.Database.BeginTransaction();
+            try
+            {
+                var role = await GetActiveRole(userCreateDto.RoleId);
+                await EmailExists(userCreateDto.Email!); // ! dùng để chắc chắn rằng email không null cho compiler đừng cảnh báo
+                await PhoneNumberExists(userCreateDto.PhoneNumber);
+                CheckDateOfBirth(userCreateDto.DateOfBirth);
+                var user = MapToEntity(userCreateDto);
+                await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
+                // Chỉ tạo Customer khi Role là khách hàng
+                if (role.RoleName == "Customer")
+                {
+                    if (customerCreateDto is null)
+                        throw new BadRequestException(
+                            "Vui lòng cung cấp thông tin khách hàng!");
+                    await CreateCustomer(user.UserId, customerCreateDto);
+                }
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return (await GetByIdAsync(user.UserId))!;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            
         }
         // Update
-        public async Task<UserResponseDto?> UpdateAsync(int id, UserUpdateDto dto)
+        public async Task<UserResponseDto?> UpdateAsync(int id, UserUpdateDto userDto, CustomerUpdateDto? customerUpdateDto = null)
         {
-            var user = await _context.Users
-                                     .FirstOrDefaultAsync(u => u.UserId == id
-                                                && u.IsDeleted == ActiveEnums.Active);
-
-            if (user is null) return null;
-            await CheckRoleId(dto.RoleId);
-            await EmailExists(dto.Email!, id);
-            await PhoneNumberExists(dto.PhoneNumber, id);
-            CheckDateOfBirth(dto.DateOfBirth);
-            UpdateEntity(user, dto);
-            await _context.SaveChangesAsync();
-            return await GetByIdAsync(id);
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var user = await _context.Users
+                                         .FirstOrDefaultAsync(u => u.UserId == id 
+                                                                && u.IsDeleted == ActiveEnums.Active);
+                if (user is null) return null;
+                // Validate User
+                await EmailExists(userDto.Email!, id);
+                await PhoneNumberExists(userDto.PhoneNumber, id);
+                CheckDateOfBirth(userDto.DateOfBirth);
+                // Lấy Role mới
+                var newRole = await GetActiveRole(userDto.RoleId);
+                // Role mới là Customer
+                if (newRole.RoleName == "Customer")
+                {
+                    if (customerUpdateDto is null)
+                        throw new BadRequestException("Vui lòng cung cấp thông tin khách hàng!");
+                    await UpdateCustomer(id, customerUpdateDto);
+                }
+                // Nếu Role mới không phải Customer:
+                // Cập nhật User
+                UpdateEntity(user, userDto);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return await GetByIdAsync(id);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
         // Delete
         public async Task<bool> DeleteAsync(int id)
@@ -193,6 +293,9 @@ namespace HotelManagement.Services
                                      .FirstOrDefaultAsync(u => u.UserId == id
                                                              &&u.IsDeleted == ActiveEnums.Inactive);    
             if (user is null) return false;
+            var customer = await _context.Customers.AnyAsync(c => c.UserId == id);
+            if (customer)
+                throw new BadRequestException("Người dùng đang có thông tin khách hàng. Không thể xóa!");
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             return true;
@@ -201,16 +304,13 @@ namespace HotelManagement.Services
         public async Task<UserResponseDto?> SoftDeleteAsync(int id)
         {
             var user = await _context.Users
+                                     .Include(u => u.Role)
                                      .FirstOrDefaultAsync(u => u.UserId == id
                                                              && u.IsDeleted == ActiveEnums.Active);
             if (user is null) return null;
-            var customer = await _context.Customers
-                                         .FirstOrDefaultAsync(c => c.UserId == id);
-            if (customer is not null)
-                throw new BadRequestException("User đã có khách hàng sử dụng. Không thể xóa!");
             user.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
-            return await GetByIdAsync(id);
+            return MapToResponseDto(user);
         }
         // Khôi phục (Restore)
         public async Task<UserResponseDto?> RestoreAsync(int id)

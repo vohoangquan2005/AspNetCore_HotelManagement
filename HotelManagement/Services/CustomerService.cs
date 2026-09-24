@@ -132,6 +132,15 @@ namespace HotelManagement.Services
             var customer = await _context.Customers.Include(c => c.User)
                                                    .FirstOrDefaultAsync(c => c.CustomerId == id);
             if (customer == null) return false;
+            // Không cho xóa Customer nếu đã có booking
+            var booking = await _context.Bookings.AnyAsync(c => c.CustomerId == id);
+            if (booking)
+                throw new BadRequestException("Khách hàng đã đặt phòng. Không thể xóa!");
+            // Không cho xóa Customer nếu đã có review
+            var review = await _context.Reviews.AnyAsync(c => c.CustomerId == id);
+            if (review)
+                throw new BadRequestException("Khách hàng đã đánh giá phòng. Không thể xóa!");
+            // FavoriteRoom đã tự động xóa theo Customer do Cascade
             _context.Customers.Remove(customer);
             await _context.SaveChangesAsync();
             return true;
