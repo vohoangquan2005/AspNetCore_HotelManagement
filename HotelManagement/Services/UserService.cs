@@ -65,9 +65,11 @@ namespace HotelManagement.Services
         // Check RoleId đã được tạo trong bảng Roles chưa?
         private async Task CheckRoleId(int roleId)
         {
-            var exists = await _context.Roles.AnyAsync(r => r.RoleId == roleId);
+            var exists = await _context.Roles
+                                       .AnyAsync(r => r.RoleId == roleId
+                                                   && r.IsDeleted == ActiveEnums.Active);
             if (!exists)
-                throw new NotFoundException("Vai trò không tồn tại!");
+                throw new NotFoundException("Vai trò không tồn tại hoặc đã bị xóa!");
         }
         // Check trùng Email
         private async Task EmailExists(string email, int? userId = null)
@@ -103,6 +105,8 @@ namespace HotelManagement.Services
         public async Task<List<UserResponseDto>> GetAllAsync()
         {
             var users = await _context.Users.Where(u => u.IsDeleted == ActiveEnums.Active)
+                                            .OrderBy(u => u.Role!.RoleName)
+                                                .ThenBy(u => u.FullName)
                                             .Select(u => new UserResponseDto
                                             {
                                                 UserId = u.UserId,
@@ -125,6 +129,8 @@ namespace HotelManagement.Services
         public async Task<List<UserResponseDto>> GetDeletedAsync()
         {
             var users = await _context.Users.Where(u => u.IsDeleted == ActiveEnums.Inactive)
+                                            .OrderBy(u => u.Role!.RoleName)
+                                                .ThenBy(u => u.FullName)
                                             .Select(u => new UserResponseDto
                                             {
                                                 UserId = u.UserId,
@@ -143,11 +149,12 @@ namespace HotelManagement.Services
                                             }).ToListAsync();
             return users;
         }
-        // Get by Id
+        // Get by Id (Chỉ lấy những User còn hoạt động
         public async Task<UserResponseDto?> GetByIdAsync(int id)
         {
             var user = await _context.Users.Include(u => u.Role)
-                                           .FirstOrDefaultAsync(u => u.UserId == id);
+                                           .FirstOrDefaultAsync(u => u.UserId == id
+                                                                  && u.IsDeleted == ActiveEnums.Active);
             if (user is null)   return null;
             return MapToResponseDto(user);
         }
@@ -166,7 +173,10 @@ namespace HotelManagement.Services
         // Update
         public async Task<UserResponseDto?> UpdateAsync(int id, UserUpdateDto dto)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users
+                                     .FirstOrDefaultAsync(u => u.UserId == id
+                                                && u.IsDeleted == ActiveEnums.Active);
+
             if (user is null) return null;
             await CheckRoleId(dto.RoleId);
             await EmailExists(dto.Email!, id);
@@ -179,7 +189,9 @@ namespace HotelManagement.Services
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users
+                                     .FirstOrDefaultAsync(u => u.UserId == id
+                                                             &&u.IsDeleted == ActiveEnums.Inactive);    
             if (user is null) return false;
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
@@ -188,8 +200,14 @@ namespace HotelManagement.Services
         // Xóa tạm
         public async Task<UserResponseDto?> SoftDeleteAsync(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users
+                                     .FirstOrDefaultAsync(u => u.UserId == id
+                                                             && u.IsDeleted == ActiveEnums.Active);
             if (user is null) return null;
+            var customer = await _context.Customers
+                                         .FirstOrDefaultAsync(c => c.UserId == id);
+            if (customer is not null)
+                throw new BadRequestException("User đã có khách hàng sử dụng. Không thể xóa!");
             user.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);
@@ -197,7 +215,9 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<UserResponseDto?> RestoreAsync(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users
+                                     .FirstOrDefaultAsync(u => u.UserId == id
+                                                             && u.IsDeleted == ActiveEnums.Inactive);
             if (user is null) return null;
             user.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
