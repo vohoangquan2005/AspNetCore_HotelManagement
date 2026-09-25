@@ -55,6 +55,7 @@ namespace HotelManagement.Services
             room.Location = dto.Location;
             room.PricePerNight = dto.PricePerNight;
             room.Description = dto.Description;
+            room.Status = dto.Status;
         }
         // Check trùng room name
         private async Task RoomNameExists(string roomName, int? roomId = null) 
@@ -67,9 +68,11 @@ namespace HotelManagement.Services
         // Check RoomTypeId đã tồn tại chưa?
         private async Task CheckRoomTypeId(int roomTypeId) 
         {
-            var exists = await _context.RoomTypes.AnyAsync(r => r.RoomTypeId == roomTypeId);
+            var exists = await _context.RoomTypes
+                                       .AnyAsync(r => r.RoomTypeId == roomTypeId 
+                                                   && r.IsDeleted == ActiveEnums.Active);
             if (!exists)
-                throw new NotFoundException("Loại phòng không tồn tại!");
+                throw new NotFoundException("Loại phòng không tồn tại hoặc đã ngừng hoạt động!");
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -78,6 +81,8 @@ namespace HotelManagement.Services
         public async Task<List<RoomResponseDto>> GetAllAsync()
         {
             var rooms = await _context.Rooms.Where(r => r.IsDeleted == ActiveEnums.Active)
+                                            .OrderBy(r => r.RoomTypeId)
+                                                .ThenBy(r => r.RoomName)
                                             .Select(r => new RoomResponseDto
                                             {
                                                 RoomId = r.RoomId,
@@ -99,6 +104,8 @@ namespace HotelManagement.Services
         public async Task<List<RoomResponseDto>> GetDeletedAsync()
         {
             var rooms = await _context.Rooms.Where(r => r.IsDeleted == ActiveEnums.Inactive)
+                                            .OrderBy(r => r.RoomName)
+                                                .ThenBy(r => r.RoomName)
                                             .Select(r => new RoomResponseDto
                                             {
                                                 RoomId = r.RoomId,
@@ -120,7 +127,8 @@ namespace HotelManagement.Services
         public async Task<RoomResponseDto?> GetByIdAsync(int id)
         {
             var room = await _context.Rooms.Include(r => r.RoomType)
-                                           .FirstOrDefaultAsync(r => r.RoomId == id);
+                                           .FirstOrDefaultAsync(r => r.RoomId == id
+                                                                  && r.IsDeleted == ActiveEnums.Active);
             if (room is null) return null;
             return MapToResponseDto(room);
         }
@@ -137,7 +145,9 @@ namespace HotelManagement.Services
         // Update
         public async Task<RoomResponseDto?> UpdateAsync(int id, RoomUpdateDto dto)
         {
-            var room = await _context.Rooms.FindAsync(id);
+            var room = await _context.Rooms
+                                     .FirstOrDefaultAsync(r => r.RoomId == id
+                                                            && r.IsDeleted== ActiveEnums.Active);
             if (room is null) return null;
             await RoomNameExists(dto.RoomName!, id);
             await CheckRoomTypeId(dto.RoomTypeId);
@@ -148,8 +158,16 @@ namespace HotelManagement.Services
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var room = await _context.Rooms.FindAsync(id);
+            var room = await _context.Rooms
+                                     .FirstOrDefaultAsync(r => r.RoomId == id
+                                                            && r.IsDeleted == ActiveEnums.Inactive);
             if (room is null) return false;
+            // Không cho xóa nếu room vẫn còn trong Review
+            var review = await _context.Reviews.AnyAsync(r => r.RoomId == id);
+            if (review)
+                throw new BadRequestException("Phòng đã có đánh giá. Không thể xóa!");
+            // Favorite tự xóa theo Room
+            // Image tự xóa theo Room
             _context.Rooms.Remove(room);
             await _context.SaveChangesAsync();
             return true;
@@ -157,17 +175,27 @@ namespace HotelManagement.Services
         // Xóa tạm
         public async Task<RoomResponseDto?> SoftDeleteAsync(int id)
         {
-            var room = await _context.Rooms.FindAsync(id);
+            var room = await _context.Rooms
+                                     .FirstOrDefaultAsync(r => r.RoomId == id
+                                                            && r.IsDeleted == ActiveEnums.Active);
             if (room is null) return null;
             room.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
-            return await GetByIdAsync(id);
+            return MapToResponseDto(room);
         }
         // Khôi phục (Restore)
         public async Task<RoomResponseDto?> RestoreAsync(int id)
         {
-            var room = await _context.Rooms.FindAsync(id);
+            var room = await _context.Rooms
+                                     .FirstOrDefaultAsync(r => r.RoomId == id
+                                                            && r.IsDeleted == ActiveEnums.Inactive);
             if (room is null) return null;
+            var roomTypeExists = await _context.RoomTypes
+                                       .AnyAsync(rt => rt.RoomTypeId == room.RoomTypeId
+                                                    && rt.IsDeleted == ActiveEnums.Active);
+
+            if (!roomTypeExists)
+                throw new BadRequestException("Loại phòng đã ngừng hoạt động. Không thể khôi phục phòng!");
             room.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);
