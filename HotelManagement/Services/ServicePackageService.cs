@@ -59,6 +59,7 @@ namespace HotelManagement.Services
         public async Task<List<ServicePackageResponseDto>> GetAllAsync()
         {
             var packages = await _context.ServicePackages.Where(sp => sp.IsDeleted == ActiveEnums.Active)
+                                            .OrderBy(sp => sp.PackageName)
                                             .Select(sp => new ServicePackageResponseDto
                                             {
                                                 ServicePackageId = sp.ServicePackageId,
@@ -75,6 +76,7 @@ namespace HotelManagement.Services
         public async Task<List<ServicePackageResponseDto>> GetDeletedAsync()
         {
             var packages = await _context.ServicePackages.Where(sp => sp.IsDeleted == ActiveEnums.Inactive)
+                                            .OrderBy(sp => sp.PackageName)
                                             .Select(sp => new ServicePackageResponseDto
                                             {
                                                 ServicePackageId = sp.ServicePackageId,
@@ -90,7 +92,9 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<ServicePackageResponseDto?> GetByIdAsync(int id)
         {
-            var package = await _context.ServicePackages.FindAsync(id);
+            var package = await _context.ServicePackages
+                                        .FirstOrDefaultAsync(sp => sp.ServicePackageId == id
+                                                                && sp.IsDeleted == ActiveEnums.Active);
             if (package is null) return null;
             return MapToResponseDto(package);
         }
@@ -106,7 +110,9 @@ namespace HotelManagement.Services
         // Update
         public async Task<ServicePackageResponseDto?> UpdateAsync(int id, ServicePackageUpdateDto dto)
         {
-            var package = await _context.ServicePackages.FindAsync(id);
+            var package = await _context.ServicePackages
+                                        .FirstOrDefaultAsync(sp => sp.ServicePackageId == id
+                                                                && sp.IsDeleted == ActiveEnums.Active);
             if (package is null) return null;
             await PackageNameExists(dto.PackageName!, id);
             UpdateEntity(package, dto);
@@ -116,8 +122,15 @@ namespace HotelManagement.Services
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var package = await _context.ServicePackages.FindAsync(id);
+            var package = await _context.ServicePackages
+                                        .FirstOrDefaultAsync(sp => sp.ServicePackageId == id
+                                                                && sp.IsDeleted == ActiveEnums.Inactive);
             if (package is null) return false;
+            // Không cho xóa nếu ServicePackage còn trong Booking
+            var servicePackage = await _context.Bookings
+                                               .AnyAsync(b => b.ServicePackageId == id);
+            if (servicePackage)
+                throw new BadRequestException("Gói dịch vụ đã được sử dụng trong đặt phòng. Không thể xóa!");
             _context.ServicePackages.Remove(package);
             await _context.SaveChangesAsync();
             return true;
@@ -125,7 +138,9 @@ namespace HotelManagement.Services
         // Xóa tạm
         public async Task<ServicePackageResponseDto?> SoftDeleteAsync(int id)
         {
-            var package = await _context.ServicePackages.FindAsync(id);
+            var package = await _context.ServicePackages
+                                        .FirstOrDefaultAsync(sp => sp.ServicePackageId == id
+                                                                && sp.IsDeleted == ActiveEnums.Active);
             if (package is null) return null;
             package.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
@@ -134,7 +149,9 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<ServicePackageResponseDto?> RestoreAsync(int id)
         {
-            var package = await _context.ServicePackages.FindAsync(id);
+            var package = await _context.ServicePackages
+                                        .FirstOrDefaultAsync(sp => sp.ServicePackageId == id
+                                                                && sp.IsDeleted == ActiveEnums.Inactive);
             if (package is null) return null;
             package.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
