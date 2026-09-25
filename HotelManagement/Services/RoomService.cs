@@ -166,6 +166,11 @@ namespace HotelManagement.Services
             var review = await _context.Reviews.AnyAsync(r => r.RoomId == id);
             if (review)
                 throw new BadRequestException("Phòng đã có đánh giá. Không thể xóa!");
+            // Không cho xóa nếu room vẫn còn trong BookingDetail
+            var bookingDetail = await _context.BookingDetails
+                                              .AnyAsync(bd => bd.RoomId == id);
+            if (bookingDetail)
+                throw new BadRequestException("Phòng đã có lịch sử đặt phòng. Không thể xóa!");
             // Favorite tự xóa theo Room
             // Image tự xóa theo Room
             _context.Rooms.Remove(room);
@@ -179,6 +184,11 @@ namespace HotelManagement.Services
                                      .FirstOrDefaultAsync(r => r.RoomId == id
                                                             && r.IsDeleted == ActiveEnums.Active);
             if (room is null) return null;
+            // Không cho xóa nếu room vẫn còn trong BookingDetail
+            var bookingDetail = await _context.BookingDetails
+                                              .AnyAsync(bd => bd.RoomId == id);
+            if (bookingDetail)
+                throw new BadRequestException("Phòng đã có lịch sử đặt phòng. Không thể xóa!");
             room.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
             return MapToResponseDto(room);

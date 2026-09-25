@@ -64,6 +64,7 @@ namespace HotelManagement.Services
         public async Task<List<ServiceResponseDto>> GetAllAsync()
         {
             var services = await _context.Services.Where(s => s.IsDeleted == ActiveEnums.Active)
+                                            .OrderBy(s => s.ServiceName)
                                             .Select(s => new ServiceResponseDto
                                             {
                                                 ServiceId = s.ServiceId,
@@ -81,6 +82,7 @@ namespace HotelManagement.Services
         public async Task<List<ServiceResponseDto>> GetDeletedAsync()
         {
             var services = await _context.Services.Where(s => s.IsDeleted == ActiveEnums.Inactive)
+                                            .OrderBy(s => s.ServiceName)
                                             .Select(s => new ServiceResponseDto
                                             {
                                                 ServiceId = s.ServiceId,
@@ -97,7 +99,9 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<ServiceResponseDto?> GetByIdAsync(int id)
         {
-            var service = await _context.Services.FindAsync(id);
+            var service = await _context.Services
+                                        .FirstOrDefaultAsync(s => s.ServiceId == id
+                                                               && s.IsDeleted == ActiveEnums.Active);
             if (service is null) return null;
             return MapToResponseDto(service);
         }
@@ -113,7 +117,9 @@ namespace HotelManagement.Services
         // Update
         public async Task<ServiceResponseDto?> UpdateAsync(int id, ServiceUpdateDto dto)
         {
-            var service = await _context.Services.FindAsync(id);
+            var service = await _context.Services
+                                        .FirstOrDefaultAsync(s => s.ServiceId == id
+                                                               && s.IsDeleted == ActiveEnums.Active);
             if (service is null) return null;
             await ServiceNameExists(dto.ServiceName!, id);
             UpdateEntity(service, dto);
@@ -123,8 +129,15 @@ namespace HotelManagement.Services
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var service = await _context.Services.FindAsync(id);
+            var service = await _context.Services
+                                        .FirstOrDefaultAsync(s => s.ServiceId == id
+                                                               && s.IsDeleted == ActiveEnums.Inactive);
             if (service is null) return false;
+            // Không cho xóa nếu Service còn trong BookingService
+            var bookingService = await _context.BookingServices
+                                               .AnyAsync(bs => bs.ServiceId == id);
+            if (bookingService)
+                throw new BadRequestException("Dịch vụ đã được sử dụng trong đặt dịch vụ. Không thể xóa!");
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
             return true;
@@ -132,7 +145,9 @@ namespace HotelManagement.Services
         // Xóa tạm
         public async Task<ServiceResponseDto?> SoftDeleteAsync(int id)
         {
-            var service = await _context.Services.FindAsync(id);
+            var service = await _context.Services
+                                        .FirstOrDefaultAsync(s => s.ServiceId == id
+                                                               && s.IsDeleted == ActiveEnums.Active);
             if (service is null) return null;
             service.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
@@ -141,7 +156,9 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<ServiceResponseDto?> RestoreAsync(int id)
         {
-            var service = await _context.Services.FindAsync(id);
+            var service = await _context.Services
+                                        .FirstOrDefaultAsync(s => s.ServiceId == id
+                                                               && s.IsDeleted == ActiveEnums.Inactive);
             if (service is null) return null;
             service.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
