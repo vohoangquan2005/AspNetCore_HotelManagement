@@ -1,4 +1,5 @@
-﻿using HotelManagement.Data;
+﻿using Azure.Core;
+using HotelManagement.Data;
 using HotelManagement.DTOs.Promotion;
 using HotelManagement.Enums;
 using HotelManagement.Exceptions;
@@ -60,6 +61,9 @@ namespace HotelManagement.Services
             promotion.StartDate = dto.StartDate;
             promotion.EndDate = dto.EndDate;
         }
+        // ===========================================================
+        // =                       VALIDATION                        =
+        // ===========================================================
         // Check trùng PromotionCode
         private async Task PromotionCodeExists(string promotionCode, int? promotionId = null)
         {
@@ -84,6 +88,79 @@ namespace HotelManagement.Services
             if (endDate < startDate)
                 throw new BadRequestException("Ngày kết thúc áp dụng không được trước ngày bắt đầu áp dụng!");
         }
+        // Check UsageLimit
+        private void CheckUsageLimit(int? usageLimit, int usedCount)
+        {
+            if (usageLimit.HasValue && usageLimit.Value < usedCount)
+                throw new BadRequestException("Giới hạn sử dụng không được nhỏ hơn số lần sử dụng!");
+        }
+        // ===========================================================
+        // =                      APPLY PROMOTION                    =
+        // ===========================================================
+        // Lấy RoomType đang Active
+        private async Task<RoomType> GetActiveRoomType(int roomTypeId)
+        {
+            var roomType = await _context.RoomTypes
+                                         .FirstOrDefaultAsync(rt => rt.RoomTypeId == roomTypeId
+                                                                 && rt.IsDeleted == ActiveEnums.Active);
+            if (roomType is null)
+                throw new NotFoundException($"Loại phòng có Id = {roomTypeId} không tồn tại hoặc đã bị xóa!");
+            return roomType;
+        }
+        // Check trùng RoomType trong danh sách ApplyPromotion
+        private void CheckDuplicateRoomType( List<ApplyPromotionCreateDto> applyPromotions) 
+        { var duplicate = applyPromotions .GroupBy(ap => ap.RoomTypeId) 
+                .Any(g => g.Count() > 1); 
+            if (duplicate) 
+                throw new ConflictException( "Không thể áp dụng khuyến mãi trùng cho cùng một loại phòng!");
+        }
+        //Tạo ApplyPromotion
+         private async Task CreateApplyPromotion(int promotionId, List<ApplyPromotionCreateDto> applyPromotions)
+        {
+            if (applyPromotions is null || applyPromotions.Count == 0)
+                throw new BadRequestException("Vui lòng chọn ít nhất một loại phòng áp dụng khuyến mãi!");
+            CheckDuplicateRoomType(applyPromotions);
+            foreach (var dto in applyPromotions)
+            {
+                await GetActiveRoomType(dto.RoomTypeId);
+                var applyPromotion = new ApplyPromotion
+                {
+                    PromotionId = promotionId,
+                    RoomTypeId = dto.RoomTypeId
+                };
+                await _context.ApplyPromotions.AddAsync(applyPromotion);
+            }
+        }
+        //Update ApplyPromotion
+         private async Task UpdateApplyPromotion(int promotionId, List<ApplyPromotionUpdateDto> applyPromotions)
+         {
+             if (applyPromotions is null || applyPromotions.Count == 0)
+                throw new BadRequestException("Vui lòng chọn ít nhất một loại phòng áp dụng khuyến mãi!");
+             var duplicate = applyPromotions.GroupBy(ap => ap.RoomTypeId)
+                                            .Any(g => g.Count() > 1);
+             if (duplicate)
+                throw new ConflictException("Không thể áp dụng khuyến mãi trùng cho cùng một loại phòng!");
+             //Kiểm tra tất cả RoomType trước
+             foreach (var dto in applyPromotions)
+             { 
+                 await GetActiveRoomType(dto.RoomTypeId); 
+             }
+             //Lấy danh sách ApplyPromotion hiện tại
+             var currentApplyPromotions = await _context.ApplyPromotions
+                                                        .Where(ap => ap.PromotionId == promotionId).ToListAsync();
+             //Xóa danh sách cũ
+             _context.ApplyPromotions.RemoveRange(currentApplyPromotions);
+             //Tạo danh sách mới
+             foreach (var dto in applyPromotions)
+             {
+             var applyPromotion = new ApplyPromotion
+             { 
+                 PromotionId = promotionId, 
+                 RoomTypeId = dto.RoomTypeId 
+             };
+             await _context.ApplyPromotions.AddAsync(applyPromotion);
+             }
+         }
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
@@ -91,6 +168,8 @@ namespace HotelManagement.Services
         public async Task<List<PromotionResponseDto>> GetAllAsync()
         {
             var promotions = await _context.Promotions.Where(p => p.IsDeleted == ActiveEnums.Active)
+                                            .OrderBy(p => p.StartDate)
+                                                .ThenBy(p => p.PromotionName)
                                             .Select(p => new PromotionResponseDto
                                             {
                                                 PromotionId = p.PromotionId,
@@ -113,6 +192,8 @@ namespace HotelManagement.Services
         public async Task<List<PromotionResponseDto>> GetDeletedAsync()
         {
             var promotions = await _context.Promotions.Where(p => p.IsDeleted == ActiveEnums.Inactive)
+                                            .OrderBy(p => p.StartDate)
+                                                .ThenBy(p => p.PromotionName)
                                             .Select(p => new PromotionResponseDto
                                             {
                                                 PromotionId = p.PromotionId,
@@ -134,38 +215,81 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<PromotionResponseDto?> GetByIdAsync(int id)
         {
-            var promotion = await _context.Promotions.FindAsync(id);
+            var promotion = await _context.Promotions
+                                          .FirstOrDefaultAsync(p => p.PromotionId == id 
+                                                                 && p.IsDeleted == ActiveEnums.Active);
             if (promotion is null) return null;
             return MapToResponseDto(promotion);
         }
         // Create 
-        public async Task<PromotionResponseDto> CreateAsync(PromotionCreateDto dto)
+        public async Task<PromotionResponseDto> CreateAsync(PromotionCreateRequestDto request)
         {
-            await PromotionCodeExists(dto.PromotionCode!);
-           await PromotionNameExists(dto.PromotionName!);
-            CheckDate(dto.StartDate, dto.EndDate, true);
-            var promotion = MapToEntity(dto);
-            await _context.Promotions.AddAsync(promotion);
-            await _context.SaveChangesAsync();
-            return MapToResponseDto(promotion);
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Validation Promotion
+                await PromotionCodeExists(request.Promotion.PromotionCode!);
+                await PromotionNameExists(request.Promotion.PromotionName!);
+                CheckDate(request.Promotion.StartDate, request.Promotion.EndDate, true);
+                CheckUsageLimit(request.Promotion.UsageLimit, 0);
+                // Create Promotion
+                var promotion = MapToEntity(request.Promotion);
+                await _context.Promotions.AddAsync(promotion);
+                await _context.SaveChangesAsync();
+                // Create ApplyPromotion
+                await CreateApplyPromotion(promotion.PromotionId, request.ApplyPromotions);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return (await GetByIdAsync(promotion.PromotionId))!;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            
         }
         // Update
-        public async Task<PromotionResponseDto?> UpdateAsync(int id, PromotionUpdateDto dto)
+        public async Task<PromotionResponseDto?> UpdateAsync(int id, PromotionUpdateRequestDto request)
         {
-            var promotion = await _context.Promotions.FindAsync(id);
-            if (promotion is null) return null;
-            await PromotionCodeExists(dto.PromotionCode!, id);
-            await PromotionNameExists(dto.PromotionName!, id);
-            CheckDate(dto.StartDate, dto.EndDate, false);
-            UpdateEntity(promotion, dto);
-            await _context.SaveChangesAsync();
-            return MapToResponseDto(promotion);
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var promotion = await _context.Promotions
+                                              .FirstOrDefaultAsync(p => p.PromotionId == id
+                                                                     && p.IsDeleted == ActiveEnums.Active);
+                if (promotion is null) return null;
+                // Validation Promotion
+                await PromotionCodeExists(request.Promotion.PromotionCode!, id);
+                await PromotionNameExists(request.Promotion.PromotionName!, id);
+                CheckDate(request.Promotion.StartDate, request.Promotion.EndDate);
+                CheckUsageLimit(request.Promotion.UsageLimit, promotion.UsedCount ?? 0);
+                // Update Promotion
+                UpdateEntity(promotion, request.Promotion);
+                // Update ApplyPromotion
+                await UpdateApplyPromotion(id, request.ApplyPromotions);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return await GetByIdAsync(id);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(); 
+                throw;
+            }
         }
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var promotion = await _context.Promotions.FindAsync(id);
+            var promotion = await _context.Promotions
+                                          .FirstOrDefaultAsync(p => p.PromotionId == id
+                                                                 && p.IsDeleted == ActiveEnums.Inactive);
             if (promotion is null) return false;
+            // Không cho xóa nếu Promotion còn trong Booking
+            var booking = await _context.Bookings
+                                        .AnyAsync(b => b.PromotionId == id);
+            if (booking)
+                throw new BadRequestException("Khuyến mãi đã được sử dụng trong đặt phòng. Không thể xóa!");
             _context.Promotions.Remove(promotion);
             await _context.SaveChangesAsync();
             return true;
@@ -173,7 +297,9 @@ namespace HotelManagement.Services
         // Xóa tạm
         public async Task<PromotionResponseDto?> SoftDeleteAsync(int id)
         {
-            var promotion = await _context.Promotions.FindAsync(id);
+            var promotion = await _context.Promotions
+                                          .FirstOrDefaultAsync(p => p.PromotionId == id
+                                                                 && p.IsDeleted == ActiveEnums.Active);
             if (promotion is null) return null;
             promotion.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
@@ -182,7 +308,9 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<PromotionResponseDto?> RestoreAsync(int id)
         {
-            var promotion = await _context.Promotions.FindAsync(id);
+            var promotion = await _context.Promotions
+                                          .FirstOrDefaultAsync(p => p.PromotionId == id
+                                                                 && p.IsDeleted == ActiveEnums.Inactive);
             if (promotion is null) return null;
             promotion.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

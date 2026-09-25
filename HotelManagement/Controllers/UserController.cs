@@ -33,17 +33,17 @@ namespace HotelManagement.Controllers
             return Ok(user);
         }
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] UserCreateDto userCreateDto, [FromQuery] CustomerCreateDto? customerCreateDto = null)
+        public async Task<IActionResult> Create([FromBody] UserCreateRequestDto request)
         {
-            var createUser = await _userService.CreateAsync(userCreateDto, customerCreateDto);
+            var createUser = await _userService.CreateAsync(request);
             return CreatedAtAction(nameof(GetById),
                                     new { id = createUser.UserId },
                                     createUser);
         }
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] UserUpdateDto userDto, [FromQuery] CustomerUpdateDto? customerUpdateDto = null)
+        public async Task<IActionResult> Update(int id, [FromBody] UserUpdateRequestDto request)
         {
-            var updateUser = await _userService.UpdateAsync(id, userDto, customerUpdateDto);
+            var updateUser = await _userService.UpdateAsync(id, request);
             if (updateUser is null) return NotFound();
             return NoContent();
         }

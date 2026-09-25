@@ -1,9 +1,10 @@
-﻿using HotelManagement.Data;
+﻿using Azure.Core;
+using HotelManagement.Data;
 using HotelManagement.DTOs.User;
+using HotelManagement.Enums;
 using HotelManagement.Exceptions;
 using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
-using HotelManagement.Enums;
 
 namespace HotelManagement.Services
 {
@@ -219,25 +220,27 @@ namespace HotelManagement.Services
             return MapToResponseDto(user);
         }
         // Create
-        public async Task<UserResponseDto> CreateAsync(UserCreateDto userCreateDto, CustomerCreateDto? customerCreateDto = null)
+        public async Task<UserResponseDto> CreateAsync(UserCreateRequestDto request)
         {
             await using var transaction = _context.Database.BeginTransaction();
             try
             {
-                var role = await GetActiveRole(userCreateDto.RoleId);
-                await EmailExists(userCreateDto.Email!); // ! dùng để chắc chắn rằng email không null cho compiler đừng cảnh báo
-                await PhoneNumberExists(userCreateDto.PhoneNumber);
-                CheckDateOfBirth(userCreateDto.DateOfBirth);
-                var user = MapToEntity(userCreateDto);
+                // Lấy Role đang Active
+                var role = await GetActiveRole(request.User.RoleId);
+                // Validate User
+                await EmailExists(request.User.Email!);
+                await PhoneNumberExists(request.User.PhoneNumber);
+                CheckDateOfBirth(request.User.DateOfBirth);
+                // Tạo User
+                var user = MapToEntity(request.User);
                 await _context.Users.AddAsync(user);
                 await _context.SaveChangesAsync();
-                // Chỉ tạo Customer khi Role là khách hàng
+                // Chỉ tạo Customer khi Role là Customer
                 if (role.RoleName == "Customer")
                 {
-                    if (customerCreateDto is null)
-                        throw new BadRequestException(
-                            "Vui lòng cung cấp thông tin khách hàng!");
-                    await CreateCustomer(user.UserId, customerCreateDto);
+                    if (request.Customer is null)
+                        throw new BadRequestException("Vui lòng cung cấp thông tin khách hàng!");
+                    await CreateCustomer(user.UserId, request.Customer);
                 }
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -251,7 +254,7 @@ namespace HotelManagement.Services
             
         }
         // Update
-        public async Task<UserResponseDto?> UpdateAsync(int id, UserUpdateDto userDto, CustomerUpdateDto? customerUpdateDto = null)
+        public async Task<UserResponseDto?> UpdateAsync(int id, UserUpdateRequestDto request)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -261,21 +264,21 @@ namespace HotelManagement.Services
                                                                 && u.IsDeleted == ActiveEnums.Active);
                 if (user is null) return null;
                 // Validate User
-                await EmailExists(userDto.Email!, id);
-                await PhoneNumberExists(userDto.PhoneNumber, id);
-                CheckDateOfBirth(userDto.DateOfBirth);
+                await EmailExists(request.User.Email!, id);
+                await PhoneNumberExists(request.User.PhoneNumber, id);
+                CheckDateOfBirth(request.User.DateOfBirth);
                 // Lấy Role mới
-                var newRole = await GetActiveRole(userDto.RoleId);
+                var newRole = await GetActiveRole(request.User.RoleId);
                 // Role mới là Customer
                 if (newRole.RoleName == "Customer")
                 {
-                    if (customerUpdateDto is null)
+                    if (request.Customer is null)
                         throw new BadRequestException("Vui lòng cung cấp thông tin khách hàng!");
-                    await UpdateCustomer(id, customerUpdateDto);
+                    await UpdateCustomer(id, request.Customer);
                 }
                 // Nếu Role mới không phải Customer:
                 // Cập nhật User
-                UpdateEntity(user, userDto);
+                UpdateEntity(user, request.User);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return await GetByIdAsync(id);

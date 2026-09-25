@@ -26,21 +26,6 @@ namespace HotelManagement.Controllers
             if (apply is null) return NotFound();
             return Ok(apply);
         }
-        [HttpPost]
-        public async Task<IActionResult> Create(ApplyPromotionCreateDto dto)
-        {
-            var createApplyPromotion = await _applyPromotionService.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById),
-                                    new { id = createApplyPromotion.ApplyPromotionId },
-                                    createApplyPromotion);
-        }
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, ApplyPromotionUpdateDto dto)
-        {
-            var updateApplyPromotion = await _applyPromotionService.UpdateAsync(id, dto);
-            if (updateApplyPromotion is null) return NotFound();
-            return NoContent();
-        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

@@ -33,17 +33,17 @@ namespace HotelManagement.Controllers
             return Ok(promotion);
         }
         [HttpPost]
-        public async Task<IActionResult> Create(PromotionCreateDto dto)
+        public async Task<IActionResult> Create([FromBody] PromotionCreateRequestDto request)
         {
-            var createPromotion = await _promotionService.CreateAsync(dto);
+            var createPromotion = await _promotionService.CreateAsync(request);
             return CreatedAtAction(nameof(GetById),
                                     new { id = createPromotion.PromotionId },
                                     createPromotion);
         }
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, PromotionUpdateDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] PromotionUpdateRequestDto request)
         {
-            var updatePromotion = await _promotionService.UpdateAsync(id, dto);
+            var updatePromotion = await _promotionService.UpdateAsync(id, request);
             if (updatePromotion is null) return NotFound();
             return NoContent();
         }
