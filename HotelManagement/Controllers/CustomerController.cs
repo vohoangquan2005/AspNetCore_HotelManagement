@@ -26,21 +26,6 @@ namespace HotelManagement.Controllers
             if (customer is null) return NotFound();
             return Ok(customer);
         }
-        [HttpPost]
-        public async Task<IActionResult> Create(CustomerCreateDto dto)
-        {
-            var createCustomer = await _customerService.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById),
-                                    new { id = createCustomer.CustomerId },
-                                    createCustomer);
-        }
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, CustomerUpdateDto dto)
-        {
-            var updateCustomer = await _customerService.UpdateAsync(id, dto);
-            if (updateCustomer is null) return NotFound();
-            return NoContent();
-        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

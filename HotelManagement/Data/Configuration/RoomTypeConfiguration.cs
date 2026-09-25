@@ -11,7 +11,7 @@ namespace HotelManagement.Data.Configuration
         {
             // Table
             builder.ToTable("RoomTypes");
-            // Primary
+            // Primary Key
             builder.HasKey(r => r.RoomTypeId);
             // RoomTypeName
             builder.Property(r => r.RoomTypeName)
@@ -19,14 +19,19 @@ namespace HotelManagement.Data.Configuration
                    .HasMaxLength(50);
             builder.HasIndex(r => r.RoomTypeName)
                    .IsUnique();
-            //BedCount
+            // BedCount
             builder.Property(r => r.BedCount)
                    .IsRequired();
             // BedType
-            builder.Property(r => r.BedCount)
-                   .IsRequired();
-            builder.HasIndex(r => r.RoomTypeName)
-                   .IsUnique();
+            builder.Property(r => r.BedType)
+                   .IsRequired()
+                   .HasMaxLength(50);
+            // Size
+            builder.Property(r => r.Size)
+                   .HasMaxLength(50);
+            // Description
+            builder.Property(r => r.Description)
+                   .HasMaxLength(500);
             // IsDeleted
             builder.Property(r => r.IsDeleted)
                    .IsRequired()

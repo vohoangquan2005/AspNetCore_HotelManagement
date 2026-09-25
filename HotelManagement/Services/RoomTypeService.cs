@@ -4,7 +4,6 @@ using HotelManagement.Enums;
 using HotelManagement.Exceptions;
 using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 
 namespace HotelManagement.Services
 {
@@ -67,6 +66,7 @@ namespace HotelManagement.Services
         public async Task<List<RoomTypeResponseDto>> GetAllAsync()
         {
             var roomTypes = await _context.RoomTypes.Where(rt => rt.IsDeleted == ActiveEnums.Active)
+                                                    .OrderBy(rt => rt.RoomTypeName)
                                                     .Select(rt => new RoomTypeResponseDto
                                                     {
                                                         RoomTypeId = rt.RoomTypeId,
@@ -86,6 +86,7 @@ namespace HotelManagement.Services
         public async Task<List<RoomTypeResponseDto>> GetDeletedAsync()
         {
             var roomTypes = await _context.RoomTypes.Where(rt => rt.IsDeleted == ActiveEnums.Inactive)
+                                                    .OrderBy(rt => rt.RoomTypeName)
                                                     .Select(rt => new RoomTypeResponseDto
                                                     {
                                                         RoomTypeId = rt.RoomTypeId,
@@ -104,7 +105,9 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<RoomTypeResponseDto?> GetByIdAsync(int id)
         {
-            var roomType = await _context.RoomTypes.FindAsync(id);
+            var roomType = await _context.RoomTypes
+                                         .FirstOrDefaultAsync(rt => rt.RoomTypeId == id
+                                                        && rt.IsDeleted == ActiveEnums.Active);
             if (roomType is null) return null;
             return MapToResponseDto(roomType);
         }
@@ -120,7 +123,9 @@ namespace HotelManagement.Services
         // Update 
         public async Task<RoomTypeResponseDto?> UpdateAsync(int id, RoomTypeUpdateDto dto)
         {
-            var roomType = await _context.RoomTypes.FindAsync(id);
+            var roomType = await _context.RoomTypes
+                                         .FirstOrDefaultAsync(rt => rt.RoomTypeId == id
+                                                                  && rt.IsDeleted == ActiveEnums.Active);
             if (roomType is null) return null;
             await RoomTypeNameExists(dto.RoomTypeName!, id);
             UpdateEntity(roomType, dto);
@@ -130,8 +135,21 @@ namespace HotelManagement.Services
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var roomType = await _context.RoomTypes.FindAsync(id);
+            var roomType = await _context.RoomTypes
+                                         .FirstOrDefaultAsync(rt => rt.RoomTypeId == id
+                                                                 && rt.IsDeleted == ActiveEnums.Inactive);
             if (roomType is null) return false;
+            // Không cho xóa nếu loại phòng còn trong Room
+            var room = await _context.Rooms
+                                     .AnyAsync(r => r.RoomTypeId == id
+                                                 && r.IsDeleted == ActiveEnums.Active);
+            if (room)
+                throw new BadRequestException("Loại phòng còn phòng thuộc loại này. Không thể xóa!");
+            // Không cho xóa nếu loại phòng còn trong ApplyPromotion 
+            var applyPromotion = _context.ApplyPromotions
+                                         .Any(a => a.RoomTypeId == id);
+            if (applyPromotion)
+                throw new BadRequestException("Loai phòng vẫn còn khuyến mãi áp dụng. Không thể xóa!");
             _context.RoomTypes.Remove(roomType);
             await _context.SaveChangesAsync();
             return true;
@@ -139,8 +157,21 @@ namespace HotelManagement.Services
         // Xóa tạm
         public async Task<RoomTypeResponseDto?> SoftDeleteAsync(int id)
         {
-            var roomType = await _context.RoomTypes.FindAsync(id);
+            var roomType = await _context.RoomTypes
+                                         .FirstOrDefaultAsync(r => r.RoomTypeId == id &&
+                                                                   r.IsDeleted == ActiveEnums.Active);
             if (roomType is null) return null;
+            // Không cho xóa nếu loại phòng còn trong Room
+            var room = await _context.Rooms
+                                     .AnyAsync(r => r.RoomTypeId == id
+                                                 && r.IsDeleted == ActiveEnums.Active);
+            if (room)
+                throw new BadRequestException("Loại phòng còn phòng thuộc loại này. Không thể xóa!");
+            // Không cho xóa nếu loại phòng còn trong ApplyPromotion 
+            var applyPromotion = _context.ApplyPromotions
+                                         .Any(a => a.RoomTypeId == id);
+            if (applyPromotion)
+                throw new BadRequestException("Loai phòng vẫn còn khuyến mãi áp dụng. Không thể xóa!");
             roomType.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
             return MapToResponseDto(roomType);
@@ -148,7 +179,9 @@ namespace HotelManagement.Services
         // Khôi phục
         public async Task<RoomTypeResponseDto?> RestoreAsync(int id)
         {
-            var roomType = await _context.RoomTypes.FindAsync(id);
+            var roomType = await _context.RoomTypes
+                                         .FirstOrDefaultAsync(rt => rt.RoomTypeId == id
+                                                                 && rt.IsDeleted == ActiveEnums.Inactive);
             if (roomType is null) return null;
             roomType.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

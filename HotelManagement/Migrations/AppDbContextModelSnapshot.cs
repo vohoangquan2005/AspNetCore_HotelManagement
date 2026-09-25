@@ -877,7 +877,9 @@ namespace HotelManagement.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("BedType")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("CreateAt")
                         .ValueGeneratedOnAdd()
@@ -885,7 +887,8 @@ namespace HotelManagement.Migrations
                         .HasDefaultValueSql("GETDATE()");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("IsDeleted")
                         .IsRequired()
@@ -899,7 +902,8 @@ namespace HotelManagement.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Size")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("UpdateAt")
                         .ValueGeneratedOnAdd()
