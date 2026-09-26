@@ -41,6 +41,20 @@ namespace HotelManagement.Controllers
             if (review is null) return NotFound();
             return NoContent();
         }
+        [HttpPut("confirm/{id}")]
+        public async Task<IActionResult> Confirm(int id)
+        {
+            var review = await _reviewService.ConfirmAsync(id);
+            if (!review) return NotFound();
+            return NoContent();
+        }
+        [HttpPut("reject/{id}")]
+        public async Task<IActionResult> Reject(int id)
+        {
+            var review = await _reviewService.RejectAsync(id);
+            if (!review) return NotFound();
+            return NoContent();
+        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

@@ -48,10 +48,10 @@ namespace HotelManagement.Controllers
             if (updateBooking is null) return NotFound();
             return Ok(updateBooking);
         }
-        [HttpPatch("{id}/status")]
+        [HttpPatch("{id}/confirm")]
         public async Task<IActionResult> SetStatus(int id, BookingEnums status)
         {
-            var booking = await _bookingService.SetStatusAsync(id, status);
+            var booking = await _bookingService.ConfirmAsync(id);
             if (booking is null) return NotFound();
             return Ok(booking);
         }

@@ -147,6 +147,8 @@ namespace HotelManagement.Services
                 var room = await _context.Rooms.FirstOrDefaultAsync(r => r.RoomId == detail.RoomId);
                 if (room is null)
                     throw new NotFoundException($"Phòng {detail.RoomId} không tồn tại!");
+                if (detail.GuestCount > room.Capacity) 
+                    throw new BadRequestException($"Phòng {detail.RoomId} chỉ có sức chứa {room.Capacity} khách!"); 
             }
         }
         // ===========================================================
@@ -374,7 +376,7 @@ namespace HotelManagement.Services
                 await CheckServicePackageId(dto.ServicePackageId);
                 CheckDate(dto.ExpectedCheckIn, dto.ExpectedCheckOut);
                 await CheckBookingDetails(dto.BookingDetails, dto.RoomCount, dto.GuestCount);
-                // Check cho tất cả phòng còn trống
+                // Check tất cả phòng còn trống không?
                 foreach (var detail in dto.BookingDetails)
                 {
                     await CheckRoomAvailable(detail.RoomId, dto.ExpectedCheckIn, dto.ExpectedCheckOut);
@@ -392,6 +394,7 @@ namespace HotelManagement.Services
                 await _context.SaveChangesAsync();
                 // Tạo booking detail và tính tiền phòng
                 await CreateBookingDetails(booking.BookingId, dto.BookingDetails);
+                await _context.SaveChangesAsync();
                 var listBookingDetails = await _context.BookingDetails
                                                        .Where(bd => bd.BookingId == booking.BookingId)
                                                        .ToListAsync();
@@ -435,11 +438,12 @@ namespace HotelManagement.Services
                                             .FirstOrDefaultAsync(b => b.BookingId == id
                                                                    && b.IsDeleted == ActiveEnums.Active);
                 if (booking is null) return null;
+                // Chỉ cho phép sửa các Booking đang Pending
+                if (booking.Status != BookingEnums.Pending) 
+                    throw new BadRequestException("Chỉ có thể cập nhật Booking đang ở trạng thái Pending!"); 
                 // Không cho update Booking đã hủy đặt phòng
                 if (booking.Status == BookingEnums.Cancelled)
-                {
                     throw new BadRequestException("Không thể cập nhật Booking đã hủy!");
-                }
                 // Lưu thông tin khuyến mãi và gói dịch vụ cũ
                 var oldPromotionId = booking.PromotionId;
                 // Validate
@@ -448,12 +452,14 @@ namespace HotelManagement.Services
                 var newPromotion = await CheckValidPromotion(dto.PromotionId);
                 await CheckServicePackageId(dto.ServicePackageId);
                 CheckDate(dto.ExpectedCheckIn, dto.ExpectedCheckOut);
+                // Kiểm tra số lượng phòng
                 var currentDetailCount = booking.BookingDetails.Count;
                 if (dto.RoomCount != currentDetailCount) 
                     throw new BadRequestException("Không thể thay đổi số lượng phòng khi cập nhật Booking. " + "Hãy cập nhật BookingDetail tương ứng!");
+                // Kiểm tra tổng số khách
                 var currentGuestCount = booking.BookingDetails.Sum(bd => bd.GuestCount);
                 if (dto.GuestCount != currentGuestCount)
-                    throw new BadRequestException("Số lượng khách không khớp với BookingDetail!");
+                    throw new BadRequestException("Số lượng khách không khớp với chi tiết đặt phòng!");
                 // Check cho tất cả phòng còn trống
                 foreach (var detail in booking.BookingDetails)
                 {
@@ -485,7 +491,7 @@ namespace HotelManagement.Services
                     if (oldPromotionId.HasValue)
                     {
                         var oldPromotion = await _context.Promotions
-                                                          .FirstOrDefaultAsync(p => p.PromotionId == oldPromotionId.Value);
+                                                         .FirstOrDefaultAsync(p => p.PromotionId == oldPromotionId.Value);
                         if (oldPromotion is not null && oldPromotion.UsedCount.HasValue)
                         {
                             oldPromotion.UsedCount--;
@@ -506,45 +512,6 @@ namespace HotelManagement.Services
                 await transaction.RollbackAsync();
                 throw;
             }
-        }
-        // Set Status
-        public async Task<BookingResponseDto?> SetStatusAsync(int id, BookingEnums status)
-        {
-            var booking = await _context.Bookings
-                                        .FirstOrDefaultAsync(b => b.BookingId == id
-                                                               && b.IsDeleted == ActiveEnums.Active);
-            if (booking is null) return null;
-            // Không cho thay đổi Booking đã hoàn thành
-            if (booking.Status == BookingEnums.Completed)
-                throw new BadRequestException("Không thể thay đổi trạng thái Booking đã hoàn thành!");
-            // Không cho thay đổi Booking đã hủy
-            if (booking.Status == BookingEnums.Cancelled)
-                throw new BadRequestException("Không thể thay đổi trạng thái Booking đã hủy!");
-            // Kiểm tra trạng thái chuyển tiếp
-            bool isValidTransition = false;
-            switch (booking.Status)
-            {
-                case BookingEnums.Pending:
-                    if (status == BookingEnums.Confirmed || status == BookingEnums.Cancelled)
-                        isValidTransition = true;
-                    break;
-
-                case BookingEnums.Confirmed:
-                    if (status == BookingEnums.CheckedIn || status == BookingEnums.Cancelled)
-                        isValidTransition = true;
-                    break;
-
-                case BookingEnums.CheckedIn:
-                    if (status == BookingEnums.Completed)
-                        isValidTransition = true;
-                    break;
-            }
-            if (!isValidTransition)
-                throw new BadRequestException($"Không thể chuyển Booking từ trạng thái {booking.Status} sang {status}!");
-            booking.Status = status;
-            booking.UpdateAt = DateTime.Now;
-            await _context.SaveChangesAsync();
-            return await GetByIdAsync(id);
         }
         // Soft delete
         public async Task<bool> SoftDeleteAsync(int id)
@@ -649,6 +616,20 @@ namespace HotelManagement.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+        // Xác nhận đặt phòng
+        public async Task<BookingResponseDto?> ConfirmAsync(int id)
+        {
+            var booking = await _context.Bookings
+                                        .FirstOrDefaultAsync(b => b.BookingId == id
+                                                               && b.IsDeleted == ActiveEnums.Active);
+            if (booking is null) return null;
+            if (booking.Status != BookingEnums.Pending)
+                throw new BadRequestException("Chỉ có thể xác nhận đặt phòng đang chờ xử lý!");
+            booking.Status = BookingEnums.Confirmed;
+            booking.UpdateAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+            return await GetByIdAsync(id);
         }
     }
 }

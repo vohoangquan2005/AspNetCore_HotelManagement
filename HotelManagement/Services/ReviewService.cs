@@ -163,5 +163,28 @@ namespace HotelManagement.Services
             await _context.SaveChangesAsync();
             return true;
         }
+        // Xác nhận Review
+        public async Task<bool> ConfirmAsync(int id)
+        {
+            var review = await _context.Reviews.FindAsync(id);
+            if (review is null) return false;
+            if (review.Status != ReviewEnums.Pending)
+                throw new BadRequestException("Chỉ có thể xác nhận đánh giá đang chờ xử lý");
+            review.Status = ReviewEnums.Approved;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        // Từ chối Review
+        public async Task<bool> RejectAsync(int id)
+        {
+            var review = await _context.Reviews.FindAsync(id);
+            if (review is null) return false;
+            if (review.Status != ReviewEnums.Pending)
+                throw new BadRequestException("Chỉ có thể xác nhận đánh giá đang chờ xử lý");
+            review.Status = ReviewEnums.Approved;
+            await _context.SaveChangesAsync();
+            return true;
+
+        }
     }
 }
