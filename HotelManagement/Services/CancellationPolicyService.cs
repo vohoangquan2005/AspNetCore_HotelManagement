@@ -21,7 +21,7 @@ namespace HotelManagement.Services
             {
                 CancellationPolicyId = policy.CancellationPolicyId,
                 PolicyName = policy.PolicyName,
-                CancellationHours = policy.CancellationHours,
+                CancellationTime = policy.CancellationTime,
                 RefundPercentage = policy.RefundPercentage,
                 Description = policy.Description,
                 IsDeleted = policy.IsDeleted,
@@ -35,7 +35,8 @@ namespace HotelManagement.Services
             return new CancellationPolicy
             {
                 PolicyName = dto.PolicyName,
-                CancellationHours = dto.CancellationHours,
+                CancellationTime = dto.CancellationTime,
+                CancellationTimeUnit = dto.CancellationTimeUnit,
                 RefundPercentage = dto.RefundPercentage,
                 Description = dto.Description,
             };
@@ -44,7 +45,8 @@ namespace HotelManagement.Services
         private void UpdateEntity(CancellationPolicy policy, CancellationPolicyUpdateDto dto)
         {
             policy.PolicyName = dto.PolicyName;
-            policy.CancellationHours = dto.CancellationHours;
+            policy.CancellationTime = dto.CancellationTime;
+            policy.CancellationTimeUnit = dto.CancellationTimeUnit;
             policy.RefundPercentage = dto.RefundPercentage;
             policy.Description = dto.Description;
         }
@@ -57,6 +59,16 @@ namespace HotelManagement.Services
             if (exists)
                 throw new ConflictException("Tên chính sách đã tồn tại!");
         }
+        // Check mốc CancellationHours đã tồn tại chưa
+        private async Task CancellationHoursExists(int cancellationTime, CancellationTimeUnitEnums cancellationTimeUnit, int? cancellationPolicyId = null)
+        {
+            var exists = await _context.CancellationPolicies
+                .AnyAsync(cp => cp.CancellationTime == cancellationTime
+                             && cp.CancellationTimeUnit == cancellationTimeUnit
+                             && (cancellationPolicyId == null || cp.CancellationPolicyId != cancellationPolicyId));
+            if (exists)
+                throw new ConflictException("Đã tồn tại chính sách với mốc thời gian này!");
+        }
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
@@ -68,7 +80,7 @@ namespace HotelManagement.Services
                                             {
                                                 CancellationPolicyId = cp.CancellationPolicyId,
                                                 PolicyName = cp.PolicyName,
-                                                CancellationHours = cp.CancellationHours,
+                                                CancellationTime = cp.CancellationTime,
                                                 RefundPercentage = cp.RefundPercentage,
                                                 Description = cp.Description,
                                                 IsDeleted = cp.IsDeleted,
@@ -85,7 +97,7 @@ namespace HotelManagement.Services
                                             {
                                                 CancellationPolicyId = cp.CancellationPolicyId,
                                                 PolicyName = cp.PolicyName,
-                                                CancellationHours = cp.CancellationHours,
+                                                CancellationTime = cp.CancellationTime,
                                                 RefundPercentage = cp.RefundPercentage,
                                                 Description = cp.Description,
                                                 IsDeleted = cp.IsDeleted,
@@ -97,7 +109,9 @@ namespace HotelManagement.Services
         // Get by Id
         public async Task<CancellationPolicyResponseDto?> GetByIdAsync(int id)
         {
-            var policy = await _context.CancellationPolicies.FindAsync(id);
+            var policy = await _context.CancellationPolicies
+                                       .FirstOrDefaultAsync(cp => cp.CancellationPolicyId == id
+                                                               && cp.IsDeleted == ActiveEnums.Active);
             if (policy is null) return null;
             return MapToResponseDto(policy);
         }
@@ -105,6 +119,7 @@ namespace HotelManagement.Services
         public async Task<CancellationPolicyResponseDto> CreateAsync(CancellationPolicyCreateDto dto)
         {
             await PolicyNameExists(dto.PolicyName!);
+            await CancellationHoursExists(dto.CancellationTime, dto.CancellationTimeUnit);
             var policy = MapToEntity(dto);
             await _context.CancellationPolicies.AddAsync(policy);
             await _context.SaveChangesAsync();
@@ -113,9 +128,12 @@ namespace HotelManagement.Services
         // Update
         public async Task<CancellationPolicyResponseDto?> UpdateAsync(int id, CancellationPolicyUpdateDto dto)
         {
-            var policy = await _context.CancellationPolicies.FindAsync(id);
+            var policy = await _context.CancellationPolicies
+                                       .FirstOrDefaultAsync(cp => cp.CancellationPolicyId == id
+                                                               && cp.IsDeleted == ActiveEnums.Active);
             if (policy is null) return null;
             await PolicyNameExists(dto.PolicyName!, id);
+            await CancellationHoursExists(dto.CancellationTime, dto.CancellationTimeUnit, id);
             UpdateEntity(policy, dto);
             await _context.SaveChangesAsync();
             return MapToResponseDto(policy);
@@ -123,8 +141,14 @@ namespace HotelManagement.Services
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var policy = await _context.CancellationPolicies.FindAsync(id);
+            var policy = await _context.CancellationPolicies
+                                       .FirstOrDefaultAsync(cp => cp.CancellationPolicyId == id
+                                                               && cp.IsDeleted == ActiveEnums.Inactive);
             if (policy is null) return false;
+            var cancellation = await _context.Cancellations
+                                             .AnyAsync(c => c.CancellationPolicyId == id);
+            if (cancellation)
+                throw new BadRequestException("Chính sách đã được sử dụng. Không thể xóa!");
             _context.CancellationPolicies.Remove(policy);
             await _context.SaveChangesAsync();
             return true;
@@ -132,7 +156,9 @@ namespace HotelManagement.Services
         // Xóa tạm
         public async Task<CancellationPolicyResponseDto?> SoftDeleteAsync(int id)
         {
-            var policy = await _context.CancellationPolicies.FindAsync(id);
+            var policy = await _context.CancellationPolicies
+                                       .FirstOrDefaultAsync(cp => cp.CancellationPolicyId == id
+                                                               && cp.IsDeleted == ActiveEnums.Active);
             if (policy is null) return null;
             policy.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
@@ -141,7 +167,9 @@ namespace HotelManagement.Services
         // Khôi phục (Restore)
         public async Task<CancellationPolicyResponseDto?> RestoreAsync(int id)
         {
-            var policy = await _context.CancellationPolicies.FirstOrDefaultAsync(u => u.CancellationPolicyId == id);
+            var policy = await _context.CancellationPolicies
+                                       .FirstOrDefaultAsync(cp => cp.CancellationPolicyId == id
+                                                               && cp.IsDeleted == ActiveEnums.Inactive);
             if (policy is null) return null;
             policy.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();

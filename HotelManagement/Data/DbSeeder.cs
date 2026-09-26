@@ -494,35 +494,30 @@ namespace HotelManagement.Data
                     new CancellationPolicy
                     {
                         PolicyName = "Hủy trước 7 ngày",
-                        CancellationHours = 168,
+                        CancellationTime = 7,
+                        CancellationTimeUnit = CancellationTimeUnitEnums.Day,
                         RefundPercentage = 100m,
-                        Description = "Hủy trước thời điểm nhận phòng từ 7 ngày trở lên được hoàn 100% tiền cọc.",
+                        Description = "Hủy trong 7 ngày từ thời điểm đặt phòng được hoàn 50% tiền cọc.",
                         IsDeleted = ActiveEnums.Active
                     },
                     new CancellationPolicy
                     {
                         PolicyName = "Hủy trước 3 ngày",
-                        CancellationHours = 72,
+                        CancellationTime = 3,
+                        CancellationTimeUnit = CancellationTimeUnitEnums.Day,
                         RefundPercentage = 70m,
-                        Description = "Hủy trước thời điểm nhận phòng từ 3 đến dưới 7 ngày được hoàn 70% tiền cọc.",
+                        Description = "Hủy trong 3 ngày từ thời điểm đặt phòng được hoàn 90% tiền cọc.",
                         IsDeleted = ActiveEnums.Active
                     },
                     new CancellationPolicy
                     {
                         PolicyName = "Hủy trước 24 giờ",
-                        CancellationHours = 24,
-                        RefundPercentage = 50m,
-                        Description = "Hủy trước thời điểm nhận phòng từ 24 giờ đến dưới 3 ngày được hoàn 50% tiền cọc.",
+                        CancellationTime = 24,
+                        CancellationTimeUnit = CancellationTimeUnitEnums.Hour,
+                        RefundPercentage = 100m,
+                        Description = "Hủy trong vòng 24 giờ từ thời điểm đặt phòng được hoàn 100% tiền cọc.",
                         IsDeleted = ActiveEnums.Active
                     },
-                    new CancellationPolicy
-                    {
-                        PolicyName = "Hủy dưới 24 giờ",
-                        CancellationHours = 0,
-                        RefundPercentage = 0m,
-                        Description = "Hủy trong vòng 24 giờ trước thời điểm nhận phòng không được hoàn tiền cọc.",
-                        IsDeleted = ActiveEnums.Active
-                    }
                 };
                 context.CancellationPolicies.AddRange(policies);
                 context.SaveChanges();

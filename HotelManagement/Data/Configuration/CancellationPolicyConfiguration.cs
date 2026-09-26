@@ -18,8 +18,13 @@ namespace HotelManagement.Data.Configuration
                    .IsRequired()
                    .HasMaxLength(100);
             // CancellationHours
-            builder.Property(cp => cp.CancellationHours)
+            builder.Property(cp => cp.CancellationTime)
                    .IsRequired();
+            // CancellatioonUnitTime
+            builder.Property(cp => cp.CancellationTimeUnit)
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasDefaultValue(CancellationTimeUnitEnums.Hour);
             // RefundPercentage
             builder.Property(cp => cp.RefundPercentage)
                    .IsRequired()

@@ -42,6 +42,20 @@ namespace HotelManagement.Controllers
             if (cancellation is null) return NotFound();
             return NoContent();
         }
+        [HttpPut("{id}/confirm")]
+        public async Task<IActionResult> Confirm(int id)
+        {
+            var result = await _cancellationService.ConfirmAsync(id);
+            if (!result) return NotFound();
+            return NoContent();
+        }
+        [HttpPut("{id}/reject")]
+        public async Task<IActionResult> Reject(int id)
+        {
+            var result = await _cancellationService.RejectAsync(id);
+            if (!result) return NotFound();
+            return NoContent();
+        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

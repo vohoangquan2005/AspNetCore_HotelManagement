@@ -331,8 +331,14 @@ namespace HotelManagement.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CancellationPolicyId"));
 
-                    b.Property<int>("CancellationHours")
+                    b.Property<int>("CancellationTime")
                         .HasColumnType("int");
+
+                    b.Property<string>("CancellationTimeUnit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Hour");
 
                     b.Property<DateTime?>("CreateAt")
                         .ValueGeneratedOnAdd()

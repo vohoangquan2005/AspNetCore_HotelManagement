@@ -47,7 +47,7 @@ namespace HotelManagement.Controllers
             if (updateRole is null) return NotFound();
             return NoContent();
         }
-        [HttpPatch("soft-delete/{id}")]
+        [HttpPatch("{id}/soft-delete")]
         public async Task<IActionResult> SoftDelete(int id)
         {
             var deleteRole = await _roleService.SoftDeleteAsync(id);
@@ -57,7 +57,7 @@ namespace HotelManagement.Controllers
 
             return NoContent();
         }
-        [HttpPatch("restore/{id}")]
+        [HttpPatch("{id}/restore")]
         public async Task<IActionResult> Restore(int id)
         {
             var restoreRole = await _roleService.RestoreAsync(id);

@@ -33,14 +33,14 @@ namespace HotelManagement.Controllers
             if (updateBookingDetail is null) return NotFound();
             return NoContent();
         }
-        [HttpPut("/checkin/{id}")]
+        [HttpPut("{id}/checkin")]
         public async Task<IActionResult> CheckIn(int id)
         {
             var checkIn = await _bookingDetailService.CheckInAsync(id);
             if (!checkIn) return NotFound();
             return NoContent();
         }
-        [HttpPut("/checkout/{id}")]
+        [HttpPut("{id}/checkout")]
         public async Task<IActionResult> CheckOut(int id)
         {
             var checkOut = await _bookingDetailService.CheckOutAsync(id);

@@ -47,14 +47,14 @@ namespace HotelManagement.Controllers
             if (updateRoom is null) return NotFound();
             return NoContent();
         }
-        [HttpPatch("soft-delete/{id}")]
+        [HttpPatch("{id}/soft-delete")]
         public async Task<IActionResult> SoftDelete(int id)
         {
             var deleteRoom = await _roomService.SoftDeleteAsync(id);
             if (deleteRoom is null) return NotFound();
             return NoContent();
         }
-        [HttpPatch("restore/{id}")]
+        [HttpPatch("{id}/restore")]
         public async Task<IActionResult> Restore(int id)
         {
             var restoreRoom = await _roomService.RestoreAsync(id);

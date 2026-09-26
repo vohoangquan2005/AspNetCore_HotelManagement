@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HotelManagement.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260925040437_Db_v10")]
-    partial class Db_v10
+    [Migration("20260926160441_Db_v11")]
+    partial class Db_v11
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -334,8 +334,14 @@ namespace HotelManagement.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CancellationPolicyId"));
 
-                    b.Property<int>("CancellationHours")
+                    b.Property<int>("CancellationTime")
                         .HasColumnType("int");
+
+                    b.Property<string>("CancellationTimeUnit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Hour");
 
                     b.Property<DateTime?>("CreateAt")
                         .ValueGeneratedOnAdd()

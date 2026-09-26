@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace HotelManagement.Migrations
 {
     /// <inheritdoc />
-    public partial class Db_v10 : Migration
+    public partial class Db_v11 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,7 +18,8 @@ namespace HotelManagement.Migrations
                     CancellationPolicyId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     PolicyName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    CancellationHours = table.Column<int>(type: "int", nullable: false),
+                    CancellationTime = table.Column<int>(type: "int", nullable: false),
+                    CancellationTimeUnit = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Hour"),
                     RefundPercentage = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     IsDeleted = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),

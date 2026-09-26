@@ -47,7 +47,7 @@ namespace HotelManagement.Controllers
             if (updatePromotion is null) return NotFound();
             return NoContent();
         }
-        [HttpPatch("soft-delete/{id}")]
+        [HttpPatch("{id}/soft-delete")]
         public async Task<IActionResult> SoftDelete(int id)
         {
             var deletePromotion = await _promotionService.SoftDeleteAsync(id);
@@ -55,7 +55,7 @@ namespace HotelManagement.Controllers
                 return NotFound();
             return NoContent();
         }
-        [HttpPatch("restore/{id}")]
+        [HttpPatch("{id}/restore")]
         public async Task<IActionResult> Restore(int id)
         {
             var restorePromotion = await _promotionService.RestoreAsync(id);
