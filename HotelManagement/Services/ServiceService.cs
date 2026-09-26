@@ -48,13 +48,17 @@ namespace HotelManagement.Services
             service.Unit = dto.Unit;
             service.Description = dto.Description;
         }
-        // Check trùng ServiceName
-        private async Task ServiceNameExists(string serviceName, int? serviceId = null)
+        // Check trùng Service (Có thể trùng tên nhưng giá sẽ khác nhau)
+        private async Task ServiceExists(string serviceName, decimal unitPrice, string unit, string description, int? serviceId = null)
         {
-            var exists = await _context.Services.AnyAsync(s => s.ServiceName == serviceName
-                                                  && (serviceId == null || serviceId != s.ServiceId));
+            var exists = await _context.Services
+                                       .AnyAsync(s => s.ServiceName == serviceName
+                                                   && s.UnitPrice == unitPrice
+                                                   && s.Unit == unit
+                                                   && s.Description == description
+                                                   && (serviceId == null || serviceId != s.ServiceId));
             if (exists)
-                throw new ConflictException("Tên dịch vụ đã tồn tại!");
+                throw new ConflictException("Dịch vụ đã tồn tại!");
 
         }
         // ===========================================================
@@ -108,7 +112,7 @@ namespace HotelManagement.Services
         // Create 
         public async Task<ServiceResponseDto> CreateAsync(ServiceCreateDto dto)
         {
-            await ServiceNameExists(dto.ServiceName!);
+            await ServiceExists(dto.ServiceName!, dto.UnitPrice, dto.Unit!, dto.Description!);
             var service = MapToEntity(dto);
             await _context.Services.AddAsync(service);
             await _context.SaveChangesAsync();
@@ -121,7 +125,7 @@ namespace HotelManagement.Services
                                         .FirstOrDefaultAsync(s => s.ServiceId == id
                                                                && s.IsDeleted == ActiveEnums.Active);
             if (service is null) return null;
-            await ServiceNameExists(dto.ServiceName!, id);
+            await ServiceExists(dto.ServiceName!, dto.UnitPrice, dto.Unit!, dto.Description!, id);
             UpdateEntity(service, dto);
             await _context.SaveChangesAsync();
             return MapToResponseDto(service);

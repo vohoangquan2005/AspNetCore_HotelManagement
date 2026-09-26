@@ -1,8 +1,10 @@
 ﻿using HotelManagement.Data;
 using HotelManagement.DTOs.BookingService;
+using HotelManagement.Enums;
 using HotelManagement.Exceptions;
-using BookingServiceModel = HotelManagement.Models.BookingService;
+using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
+using BookingServiceModel = HotelManagement.Models.BookingService;
 
 namespace HotelManagement.Services
 {
@@ -29,25 +31,22 @@ namespace HotelManagement.Services
             };
         }
         // Chuyển CreateDto -> BookingService
-        private BookingServiceModel MapToEntity(BookingServiceCreateDto dto)
+        private BookingServiceModel MapToEntity(BookingServiceCreateDto dto, Service service)
         {
             return new BookingServiceModel
             {
                 BookingId = dto.BookingId,
                 ServiceId = dto.ServiceId,
                 Quantity = dto.Quantity,
-                UnitPrice = dto.UnitPrice,
-                TotalAmount = dto.Quantity * dto.UnitPrice
+                UnitPrice = service.UnitPrice,
+                TotalAmount = dto.Quantity * service.UnitPrice,
             };
         }
         // Update BookingService từ UpdateDto
         private void UpdateEntity(BookingServiceModel bookingService, BookingServiceUpdateDto dto)
         {
-            bookingService.BookingId = dto.BookingId;
-            bookingService.ServiceId = dto.ServiceId;
             bookingService.Quantity = dto.Quantity;
-            bookingService.UnitPrice = dto.UnitPrice;
-            bookingService.TotalAmount = dto.Quantity * dto.UnitPrice;
+            bookingService.TotalAmount = dto.Quantity * bookingService.UnitPrice;
         }
         // Check BookingId có tồn tại trong bảng Booking không?
         private async Task CheckBookingId(int bookingId)
@@ -56,21 +55,23 @@ namespace HotelManagement.Services
             if (!exists)
                 throw new NotFoundException("Mã đặt phòng không tồn tại!");
         }
-        // Check ServiceId có tồn tại trong bảng Service không?
-        private async Task CheckServiceId(int serviceId)
-        {
-            var exists = await _context.Services.AnyAsync(s => s.ServiceId == serviceId);
-            if (!exists)
-                throw new NotFoundException("Mã dịch vụ không tồn tại!");
-        }
         // Check mã đặt phòng BookingId đã đặt dịch vụ ServiceId chưa?
-        private async Task CheckBookingService(int bookingId, int serviceId, int? bookingServiceId = null)
+        private async Task CheckBookingService(int bookingId, int serviceId)
         {
             var exists = await _context.BookingServices.AnyAsync(bs => bs.BookingId == bookingId
-                                                                   && bs.ServiceId == serviceId
-                                                                   && (bookingServiceId == null || bookingServiceId != bs.BookingServiceId));
+                                                                   && bs.ServiceId == serviceId);
             if (exists)
                 throw new ConflictException("Dịch vụ đã được thêm vào đặt phòng trước đó rồi!");
+        }
+        // Lấy dịch vụ đang Active
+        private async Task<Service> GetActiveService(int serviceId)
+        {
+            var service = await _context.Services
+                                        .FirstOrDefaultAsync(s =>s.ServiceId == serviceId 
+                                                              && s.IsDeleted == ActiveEnums.Active);
+            if (service is null)
+                throw new NotFoundException("Dịch vụ không tồn tại hoặc đã bị xóa!");
+            return service;
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -106,9 +107,9 @@ namespace HotelManagement.Services
         public async Task<BookingServiceResponseDto> CreateAsync(BookingServiceCreateDto dto)
         {
             await CheckBookingId(dto.BookingId);
-            await CheckServiceId(dto.ServiceId);
+            var service = await GetActiveService(dto.ServiceId);
             await CheckBookingService(dto.BookingId, dto.ServiceId);
-            var bookingService = MapToEntity(dto);
+            var bookingService = MapToEntity(dto, service);
             await _context.BookingServices.AddAsync(bookingService);
             await _context.SaveChangesAsync();
             return (await GetByIdAsync(bookingService.BookingServiceId))!;
@@ -118,9 +119,6 @@ namespace HotelManagement.Services
         {
             var bookingService = await _context.BookingServices.FindAsync(id);
             if (bookingService is null) return null;
-            await CheckBookingId(dto.BookingId);
-            await CheckServiceId(dto.ServiceId);
-            await CheckBookingService(dto.BookingId, dto.ServiceId, id);
             UpdateEntity(bookingService, dto);
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);
