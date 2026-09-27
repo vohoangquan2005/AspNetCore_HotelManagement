@@ -35,11 +35,18 @@ namespace HotelManagement.Controllers
                                    new { id = payment.PaymentId },
                                    payment);
         }
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, PaymentUpdateDto dto)
+        [HttpPut("{id}/confirm")]
+        public async Task<IActionResult> Confirm(int id)
         {
-            var payment = await _paymentService.UpdateAsync(id, dto);
-            if (payment is null) return NotFound();
+            var result = await _paymentService.ConfirmAsync(id);
+            if (result == false) return NotFound();
+            return NoContent();
+        }
+        [HttpPut("{id}/reject")]
+        public async Task<IActionResult> Reject(int id)
+        {
+            var result = await _paymentService.RejectAsync(id);
+            if (result == false) return NotFound();
             return NoContent();
         }
         [HttpDelete("{id}")]

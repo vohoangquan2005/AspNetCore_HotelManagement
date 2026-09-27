@@ -18,7 +18,6 @@ namespace HotelManagement.DTOs.Payment
         public string? PaymentMethod { get; set; }
         [StringLength(100, ErrorMessage = "Mã giao dịch không vượt quá 100 ký tự!")]
         public string? TransactionCode { get; set; }
-        public PaymentEnums Status { get; set; } // "Đang xử lý" "Thành công" "Thất bại"
         [Required(ErrorMessage = "Vui lòng nhập mã người tạo thanh toán!")]
         [Range(1, int.MaxValue, ErrorMessage = "Mã người tạo thanh toán không hợp lệ!")]
         public int? CreatedByUserId { get; set; }   // Người tạo thanh toán

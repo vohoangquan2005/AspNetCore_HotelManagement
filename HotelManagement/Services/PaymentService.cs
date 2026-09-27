@@ -41,64 +41,17 @@ namespace HotelManagement.Services
                 PaymentType = dto.PaymentType,
                 PaymentMethod = dto.PaymentMethod,
                 TransactionCode = dto.TransactionCode,
-                Status= dto.Status,
                 CreatedByUserId = dto.CreatedByUserId,
                 PaymentDate = dto.PaymentDate,
             };
         }
-        // Update Payment từ UpdateDto
-        private void UpdateEntity(Payment payment, PaymentUpdateDto dto)
-        {
-            payment.Status = dto.Status;
-            payment.PaymentDate = dto.PaymentDate;
-            payment.TransactionCode = dto.TransactionCode;
-        }
         // Check InvoiceId có tồn tại trong bảng Invoice không?
-        private async Task CheckInvoiceId(int invoiceId)
+        private async Task<Invoice> CheckInvoiceId(int invoiceId)
         {
-            var exists =  await _context.Invoices.AnyAsync(i => i.InvoiceId == invoiceId);
-            if (!exists)
-                throw new NotFoundException("Mã hóa đơn không hợp lệ!");
-        }
-        // Check số tiền thanh toán có vượt quá số tiền phải trả trong hóa đơn không?
-        private async Task CheckAmount(int invoiceId, decimal amount, PaymentTypeEnums paymentType)
-        {
-            var invoice = await _context.Invoices
-                                        .Select(i => new
-                                        {
-                                            i.InvoiceId,
-                                            i.AmountDue
-                                        })
-                                        .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
+            var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
             if (invoice is null)
                 throw new NotFoundException("Mã hóa đơn không hợp lệ!");
-            // Lấy toàn bdanh sách thanh toán của InvoiceId
-            var payments = await _context.Payments.Where(p => p.InvoiceId == invoiceId
-                                                           && p.Status == PaymentEnums.Success)
-                                           .Select(p => new
-                                           {
-                                               p.Amount,
-                                               p.PaymentType
-                                           }).ToListAsync();
-            decimal paidAmount = 0;
-            foreach (var payment in payments)
-            {
-                if (payment.PaymentType == PaymentTypeEnums.Refund)
-                    paidAmount -= payment.Amount;
-                else
-                    paidAmount += payment.Amount;
-            }
-            // Refund
-            if (paymentType == PaymentTypeEnums.Refund)
-            {
-                if (amount > paidAmount)
-                    throw new BadRequestException("Số tiền hoàn trả không được vượt quá số tiền đã thanh toán!");
-                return;
-            }
-            // Payment / Deposit
-            var remainingAmount = invoice.AmountDue - paidAmount;
-            if (amount > remainingAmount)
-                throw new BadRequestException("Số tiền thanh toán đã vượt quá số tiền còn phải trả!");
+            return invoice;
         }
         // Check CreatedByUserId có tồn tại trong bảng User không?
         // Check hợp lệ: Vai trò phải là nhân viên
@@ -115,6 +68,61 @@ namespace HotelManagement.Services
                 throw new NotFoundException("Mã nhân viên tạo thanh toán không hợp lệ!");
             if (user.RoleName != "Nhân viên")
                 throw new BadRequestException("Mã người tạo này không phải là nhân viên!");
+        }
+        // Tính số tiền đã thanh toán
+        private async Task<decimal> CalculatePaidAmount(int invoiceId)
+        {
+            var payments = await _context.Payments
+                                        .Where(p => p.InvoiceId == invoiceId
+                                                 && p.Status == PaymentEnums.Success)
+                                        .Select(p => new
+                                        {
+                                            p.Amount,
+                                            p.PaymentType
+                                        })
+                                       .ToListAsync();
+            decimal paidAmount = 0;
+            foreach (var payment in payments)
+            {
+                if (payment.PaymentType == PaymentTypeEnums.Refund)
+                    paidAmount -= payment.Amount;
+                else
+                    paidAmount += payment.Amount;
+            }
+            // Số tiền thanh toán không được âm
+            if (paidAmount < 0) paidAmount = 0;
+            return paidAmount;
+        } 
+        // Check số tiền thanh toán có vượt quá số tiền phải trả trong hóa đơn không?
+        private async Task CheckAmount(int invoiceId, decimal amount, PaymentTypeEnums paymentType)
+        {
+            var invoice = await _context.Invoices
+                                        .Select(i => new 
+                                        { 
+                                            i.InvoiceId, 
+                                            i.AmountDue 
+                                        })
+                                        .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
+            if (invoice is null) 
+                throw new NotFoundException("Mã hóa đơn không hợp lệ!");
+            // Tính paymnet
+            var paidAmount = await CalculatePaidAmount(invoiceId);
+            // Refund
+            if (paymentType == PaymentTypeEnums.Refund)
+            {
+                if (amount > paidAmount)
+                    throw new BadRequestException("Số tiền hoàn trả không được vượt quá số tiền đã thanh toán!");
+                return;
+            }
+            // Payment / Deposit
+            if (paymentType == PaymentTypeEnums.Payment || paymentType == PaymentTypeEnums.Deposit)
+            {
+                var remainingAmount = invoice.AmountDue - paidAmount;
+                if (remainingAmount < 0) 
+                    remainingAmount = 0;
+                if (amount > remainingAmount)
+                    throw new BadRequestException("Số tiền thanh toán đã vượt quá số tiền còn phải trả!");
+            }    
         }
         // Cập nhật trạng thái của Invoice
         private async Task UpdateInvoiceStatus(int invoiceId)
@@ -184,21 +192,6 @@ namespace HotelManagement.Services
             var payment = MapToEntity(dto);
             await _context.Payments.AddAsync(payment);
             await _context.SaveChangesAsync();
-            // Cập nhật trạng thái Invoice
-            await UpdateInvoiceStatus(payment.InvoiceId);
-            await _context.SaveChangesAsync();
-            return MapToResponseDto(payment);
-        }
-        // Update
-        public async Task<PaymentResponseDto?> UpdateAsync(int id, PaymentUpdateDto dto)
-        {
-            var payment = await _context.Payments.FindAsync(id);
-            if (payment is null) return null;
-            UpdateEntity(payment, dto);
-            await _context.SaveChangesAsync();
-            // Cập nhật trạng thái Invoice
-            await UpdateInvoiceStatus(payment.InvoiceId);
-            await _context.SaveChangesAsync();
             return MapToResponseDto(payment);
         }
         // Delete
@@ -206,10 +199,39 @@ namespace HotelManagement.Services
         {
             var payment = await _context.Payments.FindAsync(id);
             if (payment is null) return false;
+            // Không cho xóa giao dịch đã thành công
+            if (payment.Status == PaymentEnums.Success)
+                throw new BadRequestException("Không thể xóa giao dịch thanh toán đã thành công!");
             _context.Payments.Remove(payment);
             await _context.SaveChangesAsync();
-            // Cập nhật trạng thái Invoice
+            return true;
+        }
+        // Xác nhận thanh toán
+        public async Task<bool?> ConfirmAsync(int id)
+        {
+            var payment = await _context.Payments.FindAsync(id);
+            if (payment is null) return false;
+            // Chỉ được xác nhận thanh toán đang Pending
+            if (payment.Status != PaymentEnums.Pending)
+                throw new BadRequestException("Chỉ được xác nhận giao dịch đang chờ xử lý!");
+            // Kiểm tra lại số tiền tại thời điểm xác nhận
+            // Do có thể Invoice đã có 1 thanh toán mới trước đó
+            await CheckAmount(payment.InvoiceId, payment.Amount, payment.PaymentType);
+            payment.Status = PaymentEnums.Success;
+            payment.PaymentDate = DateTime.Now;
             await UpdateInvoiceStatus(payment.InvoiceId);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        // Từ chối thanh toán
+        public async Task<bool?> RejectAsync(int id)
+        {
+            var payment = await _context.Payments.FindAsync(id);
+            if (payment is null) return false;
+            // Chỉ được xác nhận thanh toán đang Pending
+            if (payment.Status != PaymentEnums.Pending)
+                throw new BadRequestException("Chỉ được từ chối giao dịch đang chờ xử lý!");
+            payment.Status = PaymentEnums.Failed;
             await _context.SaveChangesAsync();
             return true;
         }

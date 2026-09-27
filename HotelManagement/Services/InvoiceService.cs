@@ -18,7 +18,7 @@ namespace HotelManagement.Services
         private async Task<InvoiceResponseDto> MapToResponseDto(Invoice invoice)
         {
             var paidAmount = await CalculatePaidAmount(invoice.InvoiceId);
-            var remainingAmount = invoice.AmountDue - paidAmount;
+            var remainingAmount = invoice.AmountDue - paidAmount;   // Số tiền còn lại phải trả
             if (remainingAmount < 0) remainingAmount = 0;   // Không thể âm
             return new InvoiceResponseDto
             {
@@ -48,6 +48,7 @@ namespace HotelManagement.Services
                 if (payment.PaymentType == PaymentTypeEnums.Refund) paidAmount -= payment.Amount;
                 else paidAmount += payment.Amount;
             }
+            if (paidAmount < 0) paidAmount = 0;
             return paidAmount;
         }
         // Kiểm tra BookingId
@@ -56,29 +57,35 @@ namespace HotelManagement.Services
             var booking = await _context.Bookings
                                         .Include(b => b.Customer)
                                             .ThenInclude(c => c!.User)
-                                        .FirstOrDefaultAsync(b => b.BookingId == bookingId);
+                                        .FirstOrDefaultAsync(b => b.BookingId == bookingId
+                                                               && b.IsDeleted == ActiveEnums.Active);
             if (booking is null)
                 throw new NotFoundException("Mã đặt phòng không hợp lệ!");
             return booking;
         }
-        // Kiểm tra CreatedByUserId
-        private async Task CheckCreatedByUserId(int? userId)
+        // Kiểm tra Booking đã tạo Invoice chưa?
+        private async Task CheckInvoiceBooking(int bookingId)
         {
-            if (userId is null) return;
-            var exists = await _context.Users.AnyAsync(u => u.UserId == userId);
-            if (!exists)
-                throw new NotFoundException("Mã người tạo hóa đơn không hợp lệ!");
+            var invoiceExists = await _context.Invoices
+                                              .AnyAsync(i => i.BookingId == bookingId);
+
+            if (invoiceExists)
+                throw new ConflictException("Đặt phòng này đã có hóa đơn!");
         }
-        // Cập nhật Status của Invoice
-        private async Task UpdateInvoiceStatus(Invoice invoice)
+        // Kiểm tra CreatedByUserId
+        private async Task CheckCreateByUserId(int? userId)
         {
-            var paidAmount = await CalculatePaidAmount(invoice.InvoiceId);
-            if (paidAmount <= 0)
-                invoice.Status = InvoiceEnums.Unpaid;
-            else if (paidAmount < invoice.AmountDue)
-                invoice.Status = InvoiceEnums.PartiallyPaid;
-            else
-                invoice.Status = InvoiceEnums.Paid;
+            var user = await _context.Users.Include(u => u.Role)
+                                           .Select(u => new
+                                           {
+                                               u.UserId,
+                                               u.Role!.RoleName
+                                           })
+                                           .FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user is null)
+                throw new NotFoundException("Mã nhân viên tạo hóa đơn không hợp lệ!");
+            if (user.RoleName != "Nhân viên")
+                throw new BadRequestException("Mã người tạo này không phải là nhân viên!");
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -113,9 +120,12 @@ namespace HotelManagement.Services
         public async Task<InvoiceResponseDto> CreateAsync(InvoiceCreateDto dto)
         {
             var booking = await CheckBookingId(dto.BookingId);
-            await CheckCreatedByUserId(dto.CreatedByUserId);
+            await CheckInvoiceBooking(dto.BookingId);
+            await CheckCreateByUserId(dto.CreatedByUserId);
             var subTotal = booking.RoomAmount + booking.PackageAmount + booking.AdditionalServiceAmount;
             var discountAmount = booking.DiscountAmount;
+            if (discountAmount > subTotal) 
+                discountAmount = subTotal;
             var taxableAmount = subTotal - discountAmount;
             if (taxableAmount < 0)
                 taxableAmount = 0;
@@ -139,8 +149,12 @@ namespace HotelManagement.Services
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
-            var invoice = await _context.Invoices.FindAsync(id);
+            var invoice = await _context.Invoices
+                                        .Include(i => i.Payments)
+                                        .FirstOrDefaultAsync(i => i.InvoiceId == id);
             if (invoice is null) return false;
+            if (invoice.Payments.Any()) 
+                throw new BadRequestException("Không thể xóa hóa đơn đã có giao dịch thanh toán!"); 
             _context.Invoices.Remove(invoice);
             await _context.SaveChangesAsync();
             return true;
