@@ -28,7 +28,7 @@ namespace HotelManagement.Controllers
             return Ok(roomImage);
         }
         [HttpPost]
-        public async Task<IActionResult> Create(RoomImageCreateDto dto)
+        public async Task<IActionResult> Create([FromForm] RoomImageCreateDto dto)
         {
             var createRoomImage = await _roomImageService.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById),
@@ -36,7 +36,7 @@ namespace HotelManagement.Controllers
                                          createRoomImage);
         }
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, RoomImageUpdateDto dto)
+        public async Task<IActionResult> Update(int id, [FromForm]  RoomImageUpdateDto dto)
         {
             var updateRoomImage = await _roomImageService.UpdateAsync(id, dto);
             if (updateRoomImage is null) return NotFound();

@@ -9,9 +9,11 @@ namespace HotelManagement.Services
     public class RoomImageService
     {
         private readonly AppDbContext _context;
-        public RoomImageService(AppDbContext context)
+        private readonly CloudinaryService _cloudinaryService;
+        public RoomImageService(AppDbContext context, CloudinaryService cloudinaryService)
         {
             _context = context;
+            _cloudinaryService = cloudinaryService;
         }
         // Chuyển RoomImage -> ResponseDto
         private RoomImageResponseDto MapToResponseDto(RoomImage roomImage)
@@ -29,21 +31,22 @@ namespace HotelManagement.Services
             };
         }
         // Chuyển CreateDto -> RoomImage
-        private RoomImage MapToEntity(RoomImageCreateDto dto)
+        private RoomImage MapToEntity(RoomImageCreateDto dto, string imageUrl)
         {
             return new RoomImage
             {
                 RoomId = dto.RoomId,
-                ImageUrl = dto.ImageUrl,
+                ImageUrl = imageUrl,
                 IsPrimary = dto.IsPrimary,
                 DisplayOrder = dto.DisplayOrder
             };
         }
         // Update RoomImage từ UpdateDto
-        private void UpdateEntity(RoomImage roomImage, RoomImageUpdateDto dto)
+        private void UpdateEntity(RoomImage roomImage, RoomImageUpdateDto dto, string? imageUrl = null)
         {
-            roomImage.RoomId = dto.RoomId;
-            roomImage.ImageUrl = dto.ImageUrl;
+            // Chỉ thay ImageUrl nếu có ảnh mới
+            if (!string.IsNullOrEmpty(imageUrl))
+                roomImage.ImageUrl = imageUrl;
             roomImage.IsPrimary = dto.IsPrimary;
             roomImage.DisplayOrder = dto.DisplayOrder;
         }
@@ -62,9 +65,7 @@ namespace HotelManagement.Services
                                                                && ri.IsPrimary == 1
                                                                && (roomImageId == null || ri.RoomImageId != roomImageId));
             if (primaryImage is not null)
-            {
                 primaryImage.IsPrimary = 0;
-            }
         }
         // ===========================================================
         // =                           CRUD                          =
@@ -73,6 +74,8 @@ namespace HotelManagement.Services
         public async Task<List<RoomImageResponseDto>> GetAllAsync()
         {
             var roomImages = await _context.RoomImages
+                                           .OrderBy(i => i.RoomId)
+                                                .ThenBy(i => i.DisplayOrder)
                                            .Select(ri => new RoomImageResponseDto
                                            {
                                                 RoomImageId = ri.RoomImageId,
@@ -91,8 +94,8 @@ namespace HotelManagement.Services
         public async Task<RoomImageResponseDto?> GetByIdAsync(int id)
         {
             var roomImage = await _context.RoomImages
-                .Include(ri => ri.Room)
-                .FirstOrDefaultAsync(ri => ri.RoomImageId == id);
+                                          .Include(ri => ri.Room)
+                                          .FirstOrDefaultAsync(ri => ri.RoomImageId == id);
             if (roomImage is null) return null;
             return MapToResponseDto(roomImage);
         }
@@ -100,8 +103,12 @@ namespace HotelManagement.Services
         public async Task<RoomImageResponseDto> CreateAsync(RoomImageCreateDto dto)
         {
             await CheckRoomId(dto.RoomId);
-            if (dto.IsPrimary == 1) await SetPrimaryImage(dto.RoomId);
-            var roomImage = MapToEntity(dto);
+            // Nếu tạo ảnh chỉnh -> bỏ ảnh chính cũ
+            if (dto.IsPrimary == 1)
+                await SetPrimaryImage(dto.RoomId);
+            // Upload ảnh lên Cloud
+            var imageUrl = await _cloudinaryService.UploadImageAsync(dto.Image);
+            var roomImage = MapToEntity(dto, imageUrl);
             await _context.RoomImages.AddAsync(roomImage);
             await _context.SaveChangesAsync();
             return (await GetByIdAsync(roomImage.RoomImageId))!;
@@ -111,10 +118,21 @@ namespace HotelManagement.Services
         {
             var roomImage = await _context.RoomImages.FindAsync(id);
             if (roomImage is null) return null;
-            await CheckRoomId(dto.RoomId);
-            if (dto.IsPrimary == 1) await SetPrimaryImage(dto.RoomId, id);
-            UpdateEntity(roomImage, dto);
+            // Lưu URL ảnh cũ
+            var oldImageUrl = roomImage.ImageUrl;
+            if (dto.IsPrimary == 1)
+                await SetPrimaryImage(roomImage.RoomId, id);
+            // Url mới
+            string? newImageUrl = null;
+            // Nếu cập nhật thành ảnh chính -> bỏ ảnh chính cũ
+            string? imageUrl = null;
+            if (dto.Image != null && dto.Image.Length > 0)
+                imageUrl = await _cloudinaryService.UploadImageAsync(dto.Image);
+            UpdateEntity(roomImage, dto, newImageUrl);
             await _context.SaveChangesAsync();
+            // Xóa ảnh cũ trên Cloud
+            if (!string.IsNullOrWhiteSpace(newImageUrl) && !string.IsNullOrWhiteSpace(oldImageUrl))
+                await _cloudinaryService.DeleteImageAsync(oldImageUrl);
             return await GetByIdAsync(id);
         }
         // Delete
@@ -122,8 +140,13 @@ namespace HotelManagement.Services
         {
             var roomImage = await _context.RoomImages.FindAsync(id);
             if (roomImage is null) return false;
+            // Lưu Url cũ
+            var imageUrl = roomImage.ImageUrl;
             _context.RoomImages.Remove(roomImage);
             await _context.SaveChangesAsync();
+            // 4. Xóa ảnh trên Cloudinary
+            if (!string.IsNullOrWhiteSpace(imageUrl))
+                await _cloudinaryService.DeleteImageAsync(imageUrl);
             return true;
         }
     }

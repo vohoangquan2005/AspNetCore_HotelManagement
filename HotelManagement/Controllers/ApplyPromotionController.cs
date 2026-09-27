@@ -1,5 +1,4 @@
-﻿using HotelManagement.DTOs.ApplyPromotion;
-using HotelManagement.Services;
+﻿using HotelManagement.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers

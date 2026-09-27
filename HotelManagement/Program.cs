@@ -2,6 +2,8 @@ using HotelManagement.Data;
 using HotelManagement.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
+using CloudinaryDotNet;
+using HotelManagement.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,19 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnectionString")
     )
 );
+// Cloudinary
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+var cloudinarySettings = builder.Configuration
+                                .GetSection("CloudinarySettings")
+                                .Get<CloudinarySettings>();
+
+var account = new Account(cloudinarySettings!.CloudName,
+                          cloudinarySettings.ApiKey,
+                          cloudinarySettings.ApiSecret);
+
+var cloudinary = new Cloudinary(account);
+cloudinary.Api.Secure = true;
+builder.Services.AddSingleton(cloudinary);
 
 // Controllers
 builder.Services.AddControllers();
@@ -47,6 +62,7 @@ builder.Services.AddScoped<CancellationService>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<FavoriteRoomService>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<CloudinaryService>();    // Cloud Service
 
 
 var app = builder.Build();

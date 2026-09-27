@@ -1,5 +1,4 @@
-﻿using HotelManagement.DTOs.Customer;
-using HotelManagement.Services;
+﻿using HotelManagement.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
