@@ -1,4 +1,5 @@
 ﻿using HotelManagement.Data;
+using HotelManagement.DTOs.Booking;
 using HotelManagement.DTOs.BookingDetail;
 using HotelManagement.Enums;
 using HotelManagement.Exceptions;
@@ -10,9 +11,11 @@ namespace HotelManagement.Services
     public class BookingDetailService
     {
         private readonly AppDbContext _context;
-        public BookingDetailService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public BookingDetailService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển BookingDetail -> ResponseDto
         private BookingDetailResponseDto MapToResponseDto(BookingDetail bookingDetail)
@@ -154,8 +157,26 @@ namespace HotelManagement.Services
             await CheckBookingRoom(dto.RoomId, dto.BookingId, id);
             await CheckRoomCapacity(dto.RoomId, dto.GuestCount);
             CheckDate(dto.ActualCheckIn, dto.ActualCheckOut);
+            var oldValue = $"BookingId: {bookingDetail.BookingId}, " +
+                           $"RoomId: {bookingDetail.RoomId}, " +
+                           $"ActualCheckIn: {bookingDetail.ActualCheckIn}, " +
+                           $"ActualCheckOut: {bookingDetail.ActualCheckOut}, " +
+                           $"PricePerNight: {bookingDetail.PricePerNight}, " +
+                           $"GuestCount: {bookingDetail.GuestCount}, " +
+                           $"TotalAmount: {bookingDetail.TotalAmount}";
             UpdateEntity(bookingDetail, dto);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                            "BookingDetails",
+                                            bookingDetail.BookingDetailId,
+                                            oldValue,
+                                            $"BookingId: {bookingDetail.BookingId}, " +
+                                            $"RoomId: {bookingDetail.RoomId}, " +
+                                            $"ActualCheckIn: {bookingDetail.ActualCheckIn}, " +
+                                            $"ActualCheckOut: {bookingDetail.ActualCheckOut}, " +
+                                            $"PricePerNight: {bookingDetail.PricePerNight}, " +
+                                            $"GuestCount: {bookingDetail.GuestCount}, " +
+                                            $"TotalAmount: {bookingDetail.TotalAmount}");
             return await GetByIdAsync(id);
         }
         // Delete
@@ -186,6 +207,13 @@ namespace HotelManagement.Services
             bookingDetail.ActualCheckIn = DateTime.Now;
             booking.Status = BookingEnums.CheckedIn;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.CheckIn,
+                                            "BookingDetails",
+                                            bookingDetail.BookingDetailId,
+                                            null,
+                                            $"ActualCheckIn: {bookingDetail.ActualCheckIn}, " +
+                                            $"BookingId: {bookingDetail.BookingId}, " +
+                                            $"RoomId: {bookingDetail.RoomId}");
             return true;
         }
         // Xác nhận CheckOut
@@ -211,6 +239,13 @@ namespace HotelManagement.Services
             if(!hasOtherActiveRoom)
                 booking.Status = BookingEnums.Completed;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.CheckOut,
+                                            "BookingDetails",
+                                            bookingDetail.BookingDetailId,
+                                            null,
+                                            $"ActualCheckOut: {bookingDetail.ActualCheckOut}, " +
+                                            $"BookingId: {bookingDetail.BookingId}, " +
+                                            $"RoomId: {bookingDetail.RoomId}");
             return true;
         }
     }

@@ -1,5 +1,6 @@
 ﻿using HotelManagement.DTOs.Cancellation;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
@@ -14,12 +15,14 @@ namespace HotelManagement.Controllers
         {
             _cancellationService = cancellationService;
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var cancellations = await _cancellationService.GetAllAsync();
             return Ok(cancellations);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -27,6 +30,7 @@ namespace HotelManagement.Controllers
             if (cancellation is null) return NotFound();
             return Ok(cancellation);
         }
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(CancellationCreateDto dto)
         {
@@ -35,6 +39,7 @@ namespace HotelManagement.Controllers
                                   new { id = cancellation.CancellationId },
                                   cancellation);
         }
+        [Authorize(Roles = "Admin, Staff")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, CancellationUpdateDto dto)
         {
@@ -42,6 +47,7 @@ namespace HotelManagement.Controllers
             if (cancellation is null) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("{id}/confirm")]
         public async Task<IActionResult> Confirm(int id)
         {
@@ -49,6 +55,7 @@ namespace HotelManagement.Controllers
             if (!result) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("{id}/reject")]
         public async Task<IActionResult> Reject(int id)
         {
@@ -56,6 +63,7 @@ namespace HotelManagement.Controllers
             if (!result) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

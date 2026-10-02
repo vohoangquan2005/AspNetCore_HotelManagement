@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class CustomerService
     {
         private readonly AppDbContext _context;
-        public CustomerService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public CustomerService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển Customer -> ResponseDto
         private CustomerResponseDto MapToResponseDto(Customer customer)

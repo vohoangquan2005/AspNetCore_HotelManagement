@@ -1,9 +1,11 @@
 ﻿using HotelManagement.DTOs.Room;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class RoomController : ControllerBase
@@ -13,18 +15,21 @@ namespace HotelManagement.Controllers
         {
             _roomService = roomService;
         }
+        [Authorize(Roles = "Admin,Staff,Customer")]
         [HttpGet]   // Lấy danh sách room đang hoạt động (Active)
         public async Task<IActionResult> GetAll()
         {
             var rooms = await _roomService.GetAllAsync();
             return Ok(rooms);
         }
+        [Authorize(Roles = "Admin")]
         [HttpGet("deleted")]    // Lấy danh sách room đã xóa (Inactive)
         public async Task<IActionResult> GetDeleted()
         {
             var rooms = await _roomService.GetDeletedAsync();
             return Ok(rooms);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -32,6 +37,7 @@ namespace HotelManagement.Controllers
             if (room is null) return NotFound();
             return Ok(room);
         }
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(RoomCreateDto dto)
         {
@@ -40,6 +46,7 @@ namespace HotelManagement.Controllers
                                     new { id = createRoom.RoomId },
                                     createRoom);
         }
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, RoomUpdateDto dto)
         {
@@ -47,6 +54,7 @@ namespace HotelManagement.Controllers
             if (updateRoom is null) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/soft-delete")]
         public async Task<IActionResult> SoftDelete(int id)
         {
@@ -54,6 +62,7 @@ namespace HotelManagement.Controllers
             if (deleteRoom is null) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/restore")]
         public async Task<IActionResult> Restore(int id)
         {
@@ -62,6 +71,7 @@ namespace HotelManagement.Controllers
                 return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

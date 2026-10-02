@@ -1,9 +1,12 @@
 ﻿using HotelManagement.DTOs.FavoriteRoom;
+using HotelManagement.Models;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
 {
+    [Authorize(Roles = "Customer")]
     [ApiController]
     [Route("api/[controller]")]
     public class FavoriteRoomController : ControllerBase
@@ -14,30 +17,36 @@ namespace HotelManagement.Controllers
             _favoriteRoomService = favoriteRoomService;
         }
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetMyFavorites()
         {
-            var favoriteRooms = await _favoriteRoomService.GetAllAsync();
+            var customerIdClaim = User.FindFirst("CustomerId");
+            if (customerIdClaim is null)
+                return Unauthorized("Không phải tài khoản khách hàng!");
+            if (!int.TryParse(customerIdClaim.Value, out var customerId))
+                return Unauthorized("Mã khách hàng không hợp lệ!");
+            var favoriteRooms = await _favoriteRoomService.GetMyFavoritesAsync(customerId);
             return Ok(favoriteRooms);
-        }
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var favoriteRoom = await _favoriteRoomService.GetByIdAsync(id);
-            if (favoriteRoom is null) return NotFound();
-            return Ok(favoriteRoom);
         }
         [HttpPost]
         public async Task<IActionResult> Create(FavoriteRoomCreateDto dto)
         {
-            var favoriteRoom = await _favoriteRoomService.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById),
-                                   new { id = favoriteRoom.FavoriteRoomId },
-                                   favoriteRoom);
+            var customerIdClaim = User.FindFirst("CustomerId");
+            if (customerIdClaim is null)
+                return Unauthorized("Không phải tài khoản khách hàng!");
+            if (!int.TryParse(customerIdClaim.Value, out var customerId))
+                return Unauthorized("Mã khách hàng không hợp lệ!");
+            var favoriteRoom = await _favoriteRoomService.CreateAsync(dto, customerId);
+            return Ok(favoriteRoom);
         }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var result = await _favoriteRoomService.DeleteAsync(id);
+            var customerIdClaim = User.FindFirst("CustomerId");
+            if (customerIdClaim is null)
+                return Unauthorized("Không phải tài khoản khách hàng!");
+            if (!int.TryParse(customerIdClaim.Value, out var customerId))
+                return Unauthorized("Mã khách hàng không hợp lệ!");
+            var result = await _favoriteRoomService.DeleteAsync(id, customerId);
             if (!result) return NotFound();
             return NoContent();
         }

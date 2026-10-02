@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class RoomService
     {
         private readonly AppDbContext _context;
-        public RoomService (AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public RoomService (AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển Room -> RoomResponseDto
         private RoomResponseDto MapToResponseDto(Room room)
@@ -140,6 +142,7 @@ namespace HotelManagement.Services
             var room = MapToEntity(dto);
             await _context.Rooms.AddAsync(room);
             await _context.SaveChangesAsync();
+
             return (await GetByIdAsync(room.RoomId))!;
         }
         // Update

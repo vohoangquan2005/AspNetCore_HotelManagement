@@ -1,8 +1,10 @@
 ﻿using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ApplyPromotionController : ControllerBase
@@ -12,12 +14,14 @@ namespace HotelManagement.Controllers
         {
             _applyPromotionService = applyPromotionService;
         }
+        [Authorize(Roles = "Admin,Staff, Customer")]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var applies = await _applyPromotionService.GetAllAsync();
             return Ok(applies);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -25,6 +29,7 @@ namespace HotelManagement.Controllers
             if (apply is null) return NotFound();
             return Ok(apply);
         }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

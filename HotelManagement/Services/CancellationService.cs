@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class CancellationService
     {
         private readonly AppDbContext _context;
-        public CancellationService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public CancellationService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển Cancellation -> ResponseDto
         private CancellationResponseDto MapToResponseDto(Cancellation cancellation)
@@ -169,6 +171,15 @@ namespace HotelManagement.Services
             var cancellation = MapToEntity(dto, policy, refundAmount);
             await _context.Cancellations.AddAsync(cancellation);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                            "Cancellation",
+                                            cancellation.CancellationId,
+                                            null,
+                                            $"BookingId: {cancellation.BookingId}, " +
+                                            $"CancellationPolicyId: {cancellation.CancellationPolicyId}, " +
+                                            $"RefundPercentage: {cancellation.RefundPercentage}%, " +
+                                            $"RefundAmount: {cancellation.RefundAmount}, " +
+                                            $"Status: {cancellation.Status}");
             return MapToResponseDto(cancellation);
         }
         // Update
@@ -178,8 +189,15 @@ namespace HotelManagement.Services
             if (cancellation is null) return null;
             if (cancellation.Status != CancellationEnums.Pending)
                 throw new BadRequestException("Chỉ có thể cập nhật yêu cầu hủy đang chờ xử lý!");
+            var oldValue = $"Reason: {cancellation.Reason}";
             cancellation.Reason = dto.Reason;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(
+                AuditLogEnums.Update,
+                "Cancellation",
+                cancellation.CancellationId,
+                oldValue,
+                $"Reason: {cancellation.Reason}");
             return MapToResponseDto(cancellation);
         }
         // Delete
@@ -210,10 +228,16 @@ namespace HotelManagement.Services
                 if (cancellation.Booking is null)
                     throw new NotFoundException("Không tìm thấy đặt phòng của yêu cầu hủy!");
                 var booking = cancellation.Booking;
+                var oldCancellationStatus = cancellation.Status;
                 CheckBookingStatus(booking);
                 // Xác nhận hủy đặt phòng
                 booking.Status = BookingEnums.Cancelled;
                 await _context.SaveChangesAsync();
+                await _auditLogService.LogAsync(AuditLogEnums.Confirm,
+                                                "Cancellation",
+                                                cancellation.CancellationId,
+                                                $"Status: {oldCancellationStatus}",
+                                                $"Status: {cancellation.Status}");
                 await transaction.CommitAsync();
                 return true;
             }
@@ -232,8 +256,14 @@ namespace HotelManagement.Services
             // Chỉ xác nhận những Cancellation đang Pending
             if (cancellation.Status != CancellationEnums.Pending)
                 throw new BadRequestException("Chỉ có thể từ chối yêu cầu hủy đặt phòng đang chờ xử lý!");
+            var oldStatus = cancellation.Status;
             cancellation.Status = CancellationEnums.Rejected;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                            "Cancellation",
+                                            cancellation.CancellationId,
+                                            $"Status: {oldStatus}",
+                                            $"Status: {cancellation.Status}");
             return true;
         }
     }

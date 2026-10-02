@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class InvoiceService
     {
         private readonly AppDbContext _context;
-        public InvoiceService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public InvoiceService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển Invoice -> ResponseDto
         private async Task<InvoiceResponseDto> MapToResponseDto(Invoice invoice)
@@ -84,7 +86,7 @@ namespace HotelManagement.Services
                                            .FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
                 throw new NotFoundException("Mã nhân viên tạo hóa đơn không hợp lệ!");
-            if (user.RoleName != "Nhân viên")
+            if (user.RoleName != "Customer")
                 throw new BadRequestException("Mã người tạo này không phải là nhân viên!");
         }
         // ===========================================================
@@ -144,6 +146,13 @@ namespace HotelManagement.Services
             };
             await _context.Invoices.AddAsync(invoice);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                            "Invoices",
+                                            invoice.InvoiceId,
+                                            null,
+                                            $"BookingId: {invoice.BookingId}, " +
+                                            $"AmountDue: {invoice.AmountDue}, " +
+                                            $"Status: {invoice.Status}");
             return (await GetByIdAsync(invoice.InvoiceId))!;
         }
         // Delete

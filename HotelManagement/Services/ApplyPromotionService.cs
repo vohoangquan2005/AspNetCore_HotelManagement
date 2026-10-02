@@ -1,6 +1,5 @@
 ﻿using HotelManagement.Data;
 using HotelManagement.DTOs.ApplyPromotion;
-using HotelManagement.Exceptions;
 using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
 

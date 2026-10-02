@@ -1,5 +1,6 @@
 ﻿using HotelManagement.DTOs.CancallationPolicy;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
@@ -13,18 +14,21 @@ namespace HotelManagement.Controllers
         {
             _cancellationPolicyService = cancellationPolicyService;
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet]   // Lấy danh sách user đang hoạt động (Active)
         public async Task<IActionResult> GetAll()
         {
             var policies = await _cancellationPolicyService.GetAllAsync();
             return Ok(policies);
         }
+        [Authorize(Roles = "Admin")]
         [HttpGet("deleted")]    // Lấy danh sách user đã xóa (Inactive)
         public async Task<IActionResult> GetDeleted()
         {
             var policies = await _cancellationPolicyService.GetDeletedAsync();
             return Ok(policies);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -32,6 +36,7 @@ namespace HotelManagement.Controllers
             if (policy is null) return NotFound();
             return Ok(policy);
         }
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(CancellationPolicyCreateDto dto)
         {
@@ -40,6 +45,7 @@ namespace HotelManagement.Controllers
                                     new { id = createPolicy.CancellationPolicyId },
                                     createPolicy);
         }
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, CancellationPolicyUpdateDto dto)
         {
@@ -47,6 +53,7 @@ namespace HotelManagement.Controllers
             if (updatePolicy is null) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/soft-delete")]
         public async Task<IActionResult> SoftDelete(int id)
         {
@@ -55,6 +62,7 @@ namespace HotelManagement.Controllers
                 return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/restore")]
         public async Task<IActionResult> Restore(int id)
         {
@@ -63,6 +71,7 @@ namespace HotelManagement.Controllers
                 return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

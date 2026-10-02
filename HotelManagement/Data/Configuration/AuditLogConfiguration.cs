@@ -16,6 +16,7 @@ namespace HotelManagement.Data.Configuration
             builder.Property(a => a.UserId);
             // Action
             builder.Property(a => a.Action)
+                   .HasConversion<string>()
                    .IsRequired()
                    .HasMaxLength(50);
             // TableName
@@ -27,10 +28,10 @@ namespace HotelManagement.Data.Configuration
                    .IsRequired();
             // OldValue
             builder.Property(a => a.OldValue)
-                   .HasMaxLength(4000);
+                   .HasColumnType("nvarchar(max)");
             // NewValue
             builder.Property(a => a.NewValue)
-                   .HasMaxLength(4000);
+                   .HasColumnType("nvarchar(max)");
             // CreateAt
             builder.Property(a => a.CreateAt)
                    .HasDefaultValueSql("GETDATE()");

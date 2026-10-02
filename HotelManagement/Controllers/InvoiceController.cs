@@ -1,9 +1,11 @@
 ﻿using HotelManagement.DTOs.Invoice;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class InvoiceController : ControllerBase
@@ -13,12 +15,14 @@ namespace HotelManagement.Controllers
         {
             _invoiceService = invoiceService;
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var invoices = await _invoiceService.GetAllAsync();
             return Ok(invoices);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -26,6 +30,7 @@ namespace HotelManagement.Controllers
             if (invoice is null) return NotFound();
             return Ok(invoice);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPost]
         public async Task<IActionResult> Create(InvoiceCreateDto dto)
         {
@@ -34,6 +39,7 @@ namespace HotelManagement.Controllers
                                    new { id = createInvoice.InvoiceId },
                                    createInvoice);
         }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

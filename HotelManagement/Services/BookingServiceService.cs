@@ -1,4 +1,5 @@
 ﻿using HotelManagement.Data;
+using HotelManagement.DTOs.Booking;
 using HotelManagement.DTOs.BookingService;
 using HotelManagement.Enums;
 using HotelManagement.Exceptions;
@@ -36,6 +37,18 @@ namespace HotelManagement.Services
             return new BookingServiceModel
             {
                 BookingId = dto.BookingId,
+                ServiceId = dto.ServiceId,
+                Quantity = dto.Quantity,
+                UnitPrice = service.UnitPrice,
+                TotalAmount = dto.Quantity * service.UnitPrice,
+            };
+        }
+        // Chuyển CreateOnlineDto -> BookingService
+        private BookingServiceModel MapToEntityOnline(BookingServiceCreateOnlineDto dto, Service service, int booking)
+        {
+            return new BookingServiceModel
+            {
+                BookingId = booking,
                 ServiceId = dto.ServiceId,
                 Quantity = dto.Quantity,
                 UnitPrice = service.UnitPrice,
@@ -126,6 +139,7 @@ namespace HotelManagement.Services
             if (bookingService is null) return null;
             return MapToResponseDto(bookingService);
         }
+        // Lấy dánh sách dịch vụ đặt đã của khách hàng đang đăng nhập
         // Create
         public async Task<BookingServiceResponseDto> CreateAsync(BookingServiceCreateDto dto)
         {
@@ -136,6 +150,30 @@ namespace HotelManagement.Services
                 var service = await GetActiveService(dto.ServiceId);
                 await CheckBookingService(dto.BookingId, dto.ServiceId);
                 var bookingService = MapToEntity(dto, service);
+                await _context.BookingServices.AddAsync(bookingService);
+                await _context.SaveChangesAsync();
+                await RecalculateBookingAmount(booking);
+                booking.UpdateAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return (await GetByIdAsync(bookingService.BookingServiceId))!;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        // Create online
+        public async Task<BookingServiceResponseDto> CreateOnlineAsync(BookingServiceCreateOnlineDto dto, int bookingId)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var booking = await GetValidBooking(bookingId);
+                var service = await GetActiveService(dto.ServiceId);
+                await CheckBookingService(bookingId, dto.ServiceId);
+                var bookingService = MapToEntityOnline(dto, service, bookingId);
                 await _context.BookingServices.AddAsync(bookingService);
                 await _context.SaveChangesAsync();
                 await RecalculateBookingAmount(booking);

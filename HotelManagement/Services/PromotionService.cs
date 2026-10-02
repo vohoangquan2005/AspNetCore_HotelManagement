@@ -11,9 +11,11 @@ namespace HotelManagement.Services
     public class PromotionService
     {
         private readonly AppDbContext _context;
-        public PromotionService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public PromotionService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         private PromotionResponseDto MapToResponseDto(Promotion promotion)
         {
@@ -239,6 +241,17 @@ namespace HotelManagement.Services
                 // Create ApplyPromotion
                 await CreateApplyPromotion(promotion.PromotionId, request.ApplyPromotions);
                 await _context.SaveChangesAsync();
+                await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                                "Promotion",
+                                                promotion.PromotionId,
+                                                null,
+                                                $"PromotionCode: {promotion.PromotionCode}, " +
+                                                $"PromotionName: {promotion.PromotionName}, " +
+                                                $"DiscountValue: {promotion.DiscountValue}, " +
+                                                $"UsageLimit: {promotion.UsageLimit}, " +
+                                                $"StartDate: {promotion.StartDate}, " +
+                                                $"EndDate: {promotion.EndDate}, " +
+                                                $"RoomTypeIds: {string.Join(", ", request.ApplyPromotions.Select(ap => ap.RoomTypeId))}");
                 await transaction.CommitAsync();
                 return (await GetByIdAsync(promotion.PromotionId))!;
             }
@@ -264,11 +277,34 @@ namespace HotelManagement.Services
                 await PromotionNameExists(request.Promotion.PromotionName!, id);
                 CheckDate(request.Promotion.StartDate, request.Promotion.EndDate);
                 CheckUsageLimit(request.Promotion.UsageLimit, promotion.UsedCount ?? 0);
+                var oldValue = $"PromotionCode: {promotion.PromotionCode}, " +
+                               $"PromotionName: {promotion.PromotionName}, " +
+                               $"DiscountValue: {promotion.DiscountValue}, " +
+                               $"MinAmount: {promotion.MinAmount}, " +
+                               $"MaxDisCountAmount: {promotion.MaxDisCountAmount}, " +
+                               $"UsageLimit: {promotion.UsageLimit}, " +
+                               $"StartDate: {promotion.StartDate}, " +
+                               $"EndDate: {promotion.EndDate}";
                 // Update Promotion
                 UpdateEntity(promotion, request.Promotion);
                 // Update ApplyPromotion
                 await UpdateApplyPromotion(id, request.ApplyPromotions);
                 await _context.SaveChangesAsync();
+                var newValue = $"PromotionCode: {promotion.PromotionCode}, " +
+                               $"PromotionName: {promotion.PromotionName}, " +
+                               $"DiscountValue: {promotion.DiscountValue}, " +
+                               $"MinAmount: {promotion.MinAmount}, " +
+                               $"MaxDisCountAmount: {promotion.MaxDisCountAmount}, " +
+                               $"UsageLimit: {promotion.UsageLimit}, " +
+                               $"StartDate: {promotion.StartDate}, " +
+                               $"EndDate: {promotion.EndDate}, " +
+                               $"RoomTypeIds: {string.Join(", ", request.ApplyPromotions.Select(ap => ap.RoomTypeId))}";
+                // Lưu nhật ký
+                await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                                "Promotion",
+                                                promotion.PromotionId,
+                                                oldValue,
+                                                newValue);
                 await transaction.CommitAsync();
                 return await GetByIdAsync(id);
             }
@@ -303,6 +339,11 @@ namespace HotelManagement.Services
             if (promotion is null) return null;
             promotion.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.SoftDelete,
+                                            "Promotion",
+                                            promotion.PromotionId,
+                                            "IsDeleted: Active",
+                                            "IsDeleted: Inactive");
             return MapToResponseDto(promotion);
         }
         // Khôi phục (Restore)
@@ -314,6 +355,11 @@ namespace HotelManagement.Services
             if (promotion is null) return null;
             promotion.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Restore,
+                                            "Promotion",
+                                            promotion.PromotionId,
+                                            "IsDeleted: Inactive",
+                                            "IsDeleted: Active");
             return MapToResponseDto(promotion);
         }
     }

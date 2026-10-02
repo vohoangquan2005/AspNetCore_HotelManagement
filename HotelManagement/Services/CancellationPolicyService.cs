@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class CancellationPolicyService
     {
         private readonly AppDbContext _context;
-        public CancellationPolicyService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public CancellationPolicyService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển CancellationPolicy -> ResponseDto
         private CancellationPolicyResponseDto MapToResponseDto(CancellationPolicy policy)
@@ -123,6 +125,13 @@ namespace HotelManagement.Services
             var policy = MapToEntity(dto);
             await _context.CancellationPolicies.AddAsync(policy);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                            "CancellationPolicy",
+                                            policy.CancellationPolicyId,
+                                            null,
+                                            $"PolicyName: {policy.PolicyName}, " +
+                                            $"CancellationTime: {policy.CancellationTime} {policy.CancellationTimeUnit}, " +
+                                            $"RefundPercentage: {policy.RefundPercentage}%");
             return MapToResponseDto(policy);
         }
         // Update
@@ -134,7 +143,20 @@ namespace HotelManagement.Services
             if (policy is null) return null;
             await PolicyNameExists(dto.PolicyName!, id);
             await CancellationHoursExists(dto.CancellationTime, dto.CancellationTimeUnit, id);
+            var oldValue = $"PolicyName: {policy.PolicyName}, " +
+                           $"CancellationTime: {policy.CancellationTime} {policy.CancellationTimeUnit}, " +
+                           $"RefundPercentage: {policy.RefundPercentage}%, " +
+                           $"Description: {policy.Description}";
             UpdateEntity(policy, dto);
+            var newValue = $"PolicyName: {policy.PolicyName}, " +
+                           $"CancellationTime: {policy.CancellationTime} {policy.CancellationTimeUnit}, " +
+                           $"RefundPercentage: {policy.RefundPercentage}%, " +
+                           $"Description: {policy.Description}";
+            await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                            "CancellationPolicy",
+                                            policy.CancellationPolicyId,
+                                            oldValue,
+                                            newValue);
             await _context.SaveChangesAsync();
             return MapToResponseDto(policy);
         }
@@ -162,6 +184,11 @@ namespace HotelManagement.Services
             if (policy is null) return null;
             policy.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.SoftDelete,
+                                            "CancellationPolicy",
+                                            policy.CancellationPolicyId,
+                                            "IsDeleted: Active",
+                                            "IsDeleted: Inactive");
             return MapToResponseDto(policy);
         }
         // Khôi phục (Restore)
@@ -173,6 +200,11 @@ namespace HotelManagement.Services
             if (policy is null) return null;
             policy.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Restore,
+                                            "CancellationPolicy",
+                                            policy.CancellationPolicyId,
+                                            "IsDeleted: Inactive",
+                                            "IsDeleted: Active");
             return MapToResponseDto(policy);
         }
     }

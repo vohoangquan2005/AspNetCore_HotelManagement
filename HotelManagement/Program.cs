@@ -1,9 +1,15 @@
-using HotelManagement.Data;
-using HotelManagement.Services;
-using Microsoft.EntityFrameworkCore;
+using System.Text;
 using System.Text.Json.Serialization;
 using CloudinaryDotNet;
+using HotelManagement.Data;
+using HotelManagement.Middlewares;
+using HotelManagement.Models;
+using HotelManagement.Services;
 using HotelManagement.Settings;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,15 +17,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnectionString")
-    )
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnectionString"))
 );
+
 // Cloudinary
-builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.Configure<CloudinarySetting>(builder.Configuration.GetSection("CloudinarySettings"));
 var cloudinarySettings = builder.Configuration
                                 .GetSection("CloudinarySettings")
-                                .Get<CloudinarySettings>();
+                                .Get<CloudinarySetting>();
 
 var account = new Account(cloudinarySettings!.CloudName,
                           cloudinarySettings.ApiKey,
@@ -28,6 +33,39 @@ var account = new Account(cloudinarySettings!.CloudName,
 var cloudinary = new Cloudinary(account);
 cloudinary.Api.Secure = true;
 builder.Services.AddSingleton(cloudinary);
+
+// Password Hasher
+builder.Services.AddScoped<PasswordHasher<User>>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
+// JWT Settings & Authentication
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+var jwtSettings = builder.Configuration
+                         .GetSection("JwtSettings")
+                         .Get<JwtSettings>();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings?.Issuer,
+        ValidAudience = jwtSettings?.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSettings?.SecretKey ?? "DefaultSecretKey1234567890123456")),
+        ClockSkew = TimeSpan.Zero
+    };
+});
 
 // Controllers
 builder.Services.AddControllers();
@@ -41,6 +79,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddOpenApi();
 
 // Services
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<CustomerService>();
@@ -52,7 +92,7 @@ builder.Services.AddScoped<ServicePackageService>();
 builder.Services.AddScoped<PromotionService>();
 builder.Services.AddScoped<ApplyPromotionService>();
 builder.Services.AddScoped<CancellationPolicyService>();
-builder.Services.AddScoped<BookingService>();
+builder.Services.AddScoped<HotelManagement.Services.BookingService>();
 builder.Services.AddScoped<BookingDetailService>();
 builder.Services.AddScoped<GuestService>();
 builder.Services.AddScoped<BookingServiceService>();
@@ -61,14 +101,18 @@ builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<CancellationService>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<FavoriteRoomService>();
-builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<CloudinaryService>();    // Cloud Service
-
+builder.Services.AddScoped<StatisticsService>();    // Statistics
+// Auditlog Service
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<AuditLogService>();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 // Middleware
+app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -82,6 +126,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

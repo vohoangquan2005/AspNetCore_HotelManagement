@@ -27,11 +27,11 @@ namespace HotelManagement.Services
             };
         }
         // Chuyển CreateDto -> FavoriteRoom
-        private FavoriteRoom MapToEntity(FavoriteRoomCreateDto dto)
+        private FavoriteRoom MapToEntity(FavoriteRoomCreateDto dto, int customerId)
         {
             return new FavoriteRoom
             {
-                CustomerId = dto.CustomerId,
+                CustomerId = customerId,
                 RoomId = dto.RoomId
             };
         }
@@ -63,9 +63,10 @@ namespace HotelManagement.Services
         // =                           CRUD                          =
         // ===========================================================
         // Get all
-        public async Task<List<FavoriteRoomResponseDto>> GetAllAsync()
+        public async Task<List<FavoriteRoomResponseDto>> GetMyFavoritesAsync(int customerId)
         {
             var favoriteRooms = await _context.FavoriteRooms
+                                              .Where(fr => fr.CustomerId == customerId)
                                               .Include(fr => fr.Customer)
                                                   .ThenInclude(c => c!.User)
                                               .Include(fr => fr.Room)
@@ -81,33 +82,23 @@ namespace HotelManagement.Services
                                               .ToListAsync();
             return favoriteRooms;
         }
-        // Get by Id
-        public async Task<FavoriteRoomResponseDto?> GetByIdAsync(int id)
-        {
-            var favoriteRoom = await _context.FavoriteRooms
-                                             .Include(fr => fr.Customer)
-                                                 .ThenInclude(c => c!.User)
-                                             .Include(fr => fr.Room)
-                                             .FirstOrDefaultAsync(fr => fr.FavoriteRoomId == id);
-            if (favoriteRoom is null) return null;
-            return MapToResponseDto(favoriteRoom);
-        }
         // Create
-        public async Task<FavoriteRoomResponseDto> CreateAsync(FavoriteRoomCreateDto dto)
+        public async Task<FavoriteRoomResponseDto> CreateAsync(FavoriteRoomCreateDto dto, int customerId)
         {
-            await CheckCustomerId(dto.CustomerId);
+            await CheckCustomerId(customerId);
             await CheckRoomId(dto.RoomId);
-            await CheckFavoriteExists(dto.CustomerId, dto.RoomId);
-            var favoriteRoom = MapToEntity(dto);
+            await CheckFavoriteExists(customerId, dto.RoomId);
+            var favoriteRoom = MapToEntity(dto, customerId);
             await _context.FavoriteRooms.AddAsync(favoriteRoom);
             await _context.SaveChangesAsync();
-            return await GetByIdAsync(favoriteRoom.FavoriteRoomId)
-                   ?? throw new NotFoundException("Không tìm thấy phòng yêu thích vừa tạo!");
+            return MapToResponseDto(favoriteRoom);
         }
         // Delete
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id, int customerId)
         {
-            var favoriteRoom = await _context.FavoriteRooms.FindAsync(id);
+            var favoriteRoom = await _context.FavoriteRooms
+                                             .FirstOrDefaultAsync(fr => fr.FavoriteRoomId == id
+                                                                     && fr.CustomerId == customerId);
             if (favoriteRoom is null) return false;
             _context.FavoriteRooms.Remove(favoriteRoom);
             await _context.SaveChangesAsync();

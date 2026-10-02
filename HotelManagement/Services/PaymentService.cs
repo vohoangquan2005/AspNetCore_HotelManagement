@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class PaymentService
     {
         private readonly AppDbContext _context;
-        public PaymentService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public PaymentService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển Payment -> ResponseDto
         private PaymentResponseDto MapToResponseDto(Payment payment)
@@ -66,7 +68,7 @@ namespace HotelManagement.Services
                                            .FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
                 throw new NotFoundException("Mã nhân viên tạo thanh toán không hợp lệ!");
-            if (user.RoleName != "Nhân viên")
+            if (user.RoleName != "Customer")
                 throw new BadRequestException("Mã người tạo này không phải là nhân viên!");
         }
         // Tính số tiền đã thanh toán
@@ -192,6 +194,16 @@ namespace HotelManagement.Services
             var payment = MapToEntity(dto);
             await _context.Payments.AddAsync(payment);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                            "Payment",
+                                            payment.PaymentId,
+                                            null,
+                                            $"InvoiceId: {payment.InvoiceId}, " +
+                                            $"Amount: {payment.Amount}, " +
+                                            $"PaymentType: {payment.PaymentType}, " +
+                                            $"PaymentMethod: {payment.PaymentMethod}, " +
+                                            $"TransactionCode: {payment.TransactionCode}, " +
+                                            $"Status: {payment.Status}");
             return MapToResponseDto(payment);
         }
         // Delete
@@ -217,10 +229,16 @@ namespace HotelManagement.Services
             // Kiểm tra lại số tiền tại thời điểm xác nhận
             // Do có thể Invoice đã có 1 thanh toán mới trước đó
             await CheckAmount(payment.InvoiceId, payment.Amount, payment.PaymentType);
+            var oldPaymentStatus = payment.Status;
             payment.Status = PaymentEnums.Success;
             payment.PaymentDate = DateTime.Now;
             await UpdateInvoiceStatus(payment.InvoiceId);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Confirm,
+                                            "Payment",
+                                            payment.PaymentId,
+                                            $"Status: {oldPaymentStatus}",
+                                            $"Status: {payment.Status}");
             return true;
         }
         // Từ chối thanh toán
@@ -231,8 +249,14 @@ namespace HotelManagement.Services
             // Chỉ được xác nhận thanh toán đang Pending
             if (payment.Status != PaymentEnums.Pending)
                 throw new BadRequestException("Chỉ được từ chối giao dịch đang chờ xử lý!");
+            var oldStatus = payment.Status;
             payment.Status = PaymentEnums.Failed;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                            "Payment",
+                                            payment.PaymentId,
+                                            $"Status: {oldStatus}",
+                                            $"Status: {payment.Status}");
             return true;
         }
     }

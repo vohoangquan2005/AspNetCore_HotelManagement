@@ -1,4 +1,6 @@
-﻿using HotelManagement.Enums;
+﻿using HotelManagement.DTOs.BookingDetail;
+using HotelManagement.DTOs.BookingService;
+using HotelManagement.Enums;
 
 namespace HotelManagement.DTOs.Booking
 {
@@ -36,5 +38,10 @@ namespace HotelManagement.DTOs.Booking
         public ActiveEnums IsDeleted { get; set; }
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
+        // Danh sách phòng
+        public List<BookingDetailResponseDto> BookingDetails { get; set; } = new();
+
+        // Danh sách dịch vụ
+        public List<BookingServiceResponseDto> BookingServices { get; set; } = new();
     }
 }

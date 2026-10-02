@@ -1,9 +1,11 @@
 ﻿using HotelManagement.DTOs.Review;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ReviewController : ControllerBase
@@ -13,12 +15,14 @@ namespace HotelManagement.Controllers
         {
             _reviewService = reviewService;
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var reviews = await _reviewService.GetAllAsync();
             return Ok(reviews);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -26,6 +30,7 @@ namespace HotelManagement.Controllers
             if (review is null) return NotFound();
             return Ok(review);
         }
+        [Authorize(Roles = "Customer")]
         [HttpPost]
         public async Task<IActionResult> Create(ReviewCreateDto dto)
         {
@@ -34,6 +39,7 @@ namespace HotelManagement.Controllers
                                    new { id = review.ReviewId },
                                    review);
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, ReviewUpdateDto dto)
         {
@@ -41,6 +47,7 @@ namespace HotelManagement.Controllers
             if (review is null) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("{id}/confirm")]
         public async Task<IActionResult> Confirm(int id)
         {
@@ -48,6 +55,7 @@ namespace HotelManagement.Controllers
             if (!review) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("{id}/reject")]
         public async Task<IActionResult> Reject(int id)
         {
@@ -55,6 +63,7 @@ namespace HotelManagement.Controllers
             if (!review) return NotFound();
             return NoContent();
         }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

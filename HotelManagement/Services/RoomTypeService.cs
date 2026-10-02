@@ -4,15 +4,18 @@ using HotelManagement.Enums;
 using HotelManagement.Exceptions;
 using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace HotelManagement.Services
 {
     public class RoomTypeService
     {
         private readonly AppDbContext _context;
-        public RoomTypeService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public RoomTypeService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển Room Type -> RooTypeResponseDto
         private RoomTypeResponseDto MapToResponseDto(RoomType roomType)
@@ -118,6 +121,11 @@ namespace HotelManagement.Services
             var roomType = MapToEntity(dto);
             await _context.RoomTypes.AddAsync(roomType);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                            "RoomType",
+                                            roomType.RoomTypeId,
+                                            null,
+                                            JsonSerializer.Serialize(roomType));
             return MapToResponseDto(roomType);
         }
         // Update 
@@ -128,8 +136,22 @@ namespace HotelManagement.Services
                                                                   && rt.IsDeleted == ActiveEnums.Active);
             if (roomType is null) return null;
             await RoomTypeNameExists(dto.RoomTypeName!, id);
+            var oldValue = $"RoomTypeName: {roomType.RoomTypeName}, " +
+                           $"BedCount: {roomType.BedCount}, " +
+                           $"BedType: {roomType.BedType}, " +
+                           $"Size: {roomType.Size}, " +
+                           $"Description: {roomType.Description}";
             UpdateEntity(roomType, dto);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                            "RoomTypes",
+                                            roomType.RoomTypeId,
+                                            oldValue,
+                                            $"RoomTypeName: {roomType.RoomTypeName}, " +
+                                            $"BedCount: {roomType.BedCount}, " +
+                                            $"BedType: {roomType.BedType}, " +
+                                            $"Size: {roomType.Size}, " +
+                                            $"Description: {roomType.Description}");
             return MapToResponseDto(roomType);
         }
         // Delete
@@ -174,6 +196,11 @@ namespace HotelManagement.Services
                 throw new BadRequestException("Loai phòng vẫn còn khuyến mãi áp dụng. Không thể xóa!");
             roomType.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.SoftDelete,
+                                            "RoomTypes",
+                                            roomType.RoomTypeId,
+                                            "IsDeleted: Active",
+                                            "IsDeleted: Inactive");
             return MapToResponseDto(roomType);
         }
         // Khôi phục
@@ -185,6 +212,11 @@ namespace HotelManagement.Services
             if (roomType is null) return null;
             roomType.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Restore,
+                                            "RoomTypes",
+                                            roomType.RoomTypeId,
+                                            "IsDeleted: Inactive",
+                                            "IsDeleted: Active");
             return MapToResponseDto(roomType);
         }
     }

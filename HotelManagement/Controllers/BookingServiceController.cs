@@ -1,9 +1,11 @@
 ﻿using HotelManagement.DTOs.BookingService;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class BookingServiceController : ControllerBase
@@ -14,6 +16,7 @@ namespace HotelManagement.Controllers
             _bookingService = bookingService;
         }
         // Get all
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -21,6 +24,7 @@ namespace HotelManagement.Controllers
             return Ok(bookingServices);
         }
         // Get by Id
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -30,6 +34,7 @@ namespace HotelManagement.Controllers
             return Ok(bookingService);
         }
         // Create
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPost]
         public async Task<IActionResult> Create(BookingServiceCreateDto dto)
         {
@@ -38,7 +43,9 @@ namespace HotelManagement.Controllers
                                    new { id = bookingService.BookingServiceId },
                                    bookingService);
         }
+        // Create online
         // Update
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, BookingServiceUpdateDto dto)
         {
@@ -47,6 +54,7 @@ namespace HotelManagement.Controllers
             return NoContent();
         }
         // Delete
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

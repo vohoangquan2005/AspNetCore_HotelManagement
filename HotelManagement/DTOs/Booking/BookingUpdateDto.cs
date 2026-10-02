@@ -5,8 +5,6 @@ namespace HotelManagement.DTOs.Booking
 {
     public class BookingUpdateDto
     {
-        [Range(1, int.MaxValue, ErrorMessage = "Mã khách hàng không hợp lệ!")]
-        public int CustomerId { get; set; }
         public DateTime ExpectedCheckIn { get; set; }
         public DateTime ExpectedCheckOut { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "Số lượng khách phải lớn hơn 0!")]

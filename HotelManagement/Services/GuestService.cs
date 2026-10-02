@@ -1,5 +1,6 @@
 ﻿using HotelManagement.Data;
 using HotelManagement.DTOs.Guest;
+using HotelManagement.Enums;
 using HotelManagement.Exceptions;
 using HotelManagement.Models;
 using Microsoft.EntityFrameworkCore;
@@ -9,9 +10,11 @@ namespace HotelManagement.Services
     public class GuestService
     {
         private readonly AppDbContext _context;
-        public GuestService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public GuestService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển Guest -> ResponseDto
         private GuestResponseDto MapToResponseDto(Guest guest)
@@ -111,6 +114,13 @@ namespace HotelManagement.Services
             var guest = MapToEntity(dto);
             await _context.Guests.AddAsync(guest);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                            "Guest",
+                                            guest.GuestId,
+                                            null,
+                                            $"BookingDetailId: {guest.BookingDetailId}, " +
+                                            $"FullName: {guest.FullName}, " +
+                                            $"PhoneNumber: {guest.PhoneNumber}");
             return (await GetByIdAsync(guest.GuestId))!;
         }
         // Update
@@ -121,11 +131,30 @@ namespace HotelManagement.Services
             await CheckBookingDetailId(dto.BookingDetailId);
             // Chỉ cần check khi chuyển khách này sang chi tiết phòng khác
             if (guest.BookingDetailId != dto.BookingDetailId)
-            {
                 await CheckGuestCount(dto.BookingDetailId);
-            }
+            var oldValue = $"BookingDetailId: {guest.BookingDetailId}, " +
+                           $"FullName: {guest.FullName}, " +
+                           $"DateOfBirth: {guest.DateOfBirth}, " +
+                           $"Gender: {guest.Gender}, " +
+                           $"Nationality: {guest.Nationality}, " +
+                           $"PhoneNumber: {guest.PhoneNumber}, " +
+                           $"Email: {guest.Email}, " +
+                           $"Note: {guest.Note}";
             UpdateEntity(guest, dto);
             await _context.SaveChangesAsync();
+            var newValue = $"BookingDetailId: {guest.BookingDetailId}, " +
+                           $"FullName: {guest.FullName}, " +
+                           $"DateOfBirth: {guest.DateOfBirth}, " +
+                           $"Gender: {guest.Gender}, " +
+                           $"Nationality: {guest.Nationality}, " +
+                           $"PhoneNumber: {guest.PhoneNumber}, " +
+                           $"Email: {guest.Email}, " +
+                           $"Note: {guest.Note}";
+            await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                            "Guest",
+                                            guest.GuestId,
+                                            oldValue,
+                                            newValue);
             return await GetByIdAsync(id);
         }
         // Delete

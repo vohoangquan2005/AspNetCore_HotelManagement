@@ -1,9 +1,11 @@
 ﻿using HotelManagement.DTOs.RoomImage;
 using HotelManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Controllers
 {
+    [Authorize(Roles = "Admin")]
     [ApiController]
     [Route("api/[controller]")]
     public class RoomImageController : ControllerBase

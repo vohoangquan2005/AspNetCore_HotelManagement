@@ -11,9 +11,11 @@ namespace HotelManagement.Services
     public class UserService
     {
         private readonly AppDbContext _context;
-        public UserService(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public UserService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
         // Chuyển User -> UserResponseDto
         private UserResponseDto MapToResponseDto(User user)
@@ -243,6 +245,17 @@ namespace HotelManagement.Services
                     await CreateCustomer(user.UserId, request.Customer);
                 }
                 await _context.SaveChangesAsync();
+                await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                                "User",
+                                                user.UserId,
+                                                null,
+                                                $"FullName: {user.FullName}, " +
+                                                $"Email: {user.Email}, " +
+                                                $"RoleId: {user.RoleId}, " +
+                                                $"PhoneNumber: {user.PhoneNumber}" +
+                                                (role.RoleName == "Customer" ? $", CCCD: {request.Customer?.CCCD}, " 
+                                                                             + $"Nationality: {request.Customer?.Nationality}"
+                                                                             : ""));
                 await transaction.CommitAsync();
                 return (await GetByIdAsync(user.UserId))!;
             }
@@ -277,9 +290,30 @@ namespace HotelManagement.Services
                     await UpdateCustomer(id, request.Customer);
                 }
                 // Nếu Role mới không phải Customer:
+                var oldValue = $"FullName: {user.FullName}, " +
+                               $"Email: {user.Email}, " +
+                               $"RoleId: {user.RoleId}, " +
+                               $"IsLocked: {user.IsLocked}, " +
+                               $"Gender: {user.Gender}, " +
+                               $"DateOfBirth: {user.DateOfBirth}, " +
+                               $"PhoneNumber: {user.PhoneNumber}, " +
+                               $"Avatar: {user.Avatar}";
                 // Cập nhật User
                 UpdateEntity(user, request.User);
                 await _context.SaveChangesAsync();
+                var newValue = $"FullName: {user.FullName}, " +
+                               $"Email: {user.Email}, " +
+                               $"RoleId: {user.RoleId}, " +
+                               $"IsLocked: {user.IsLocked}, " +
+                               $"Gender: {user.Gender}, " +
+                               $"DateOfBirth: {user.DateOfBirth}, " +
+                               $"PhoneNumber: {user.PhoneNumber}, " +
+                               $"Avatar: {user.Avatar}";
+                await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                                "User",
+                                                user.UserId,
+                                                oldValue,
+                                                newValue);
                 await transaction.CommitAsync();
                 return await GetByIdAsync(id);
             }
@@ -313,6 +347,11 @@ namespace HotelManagement.Services
             if (user is null) return null;
             user.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.SoftDelete,
+                                            "User",
+                                            user.UserId,
+                                            "IsDeleted: Active",
+                                            "IsDeleted: Inactive");
             return MapToResponseDto(user);
         }
         // Khôi phục (Restore)
@@ -324,6 +363,11 @@ namespace HotelManagement.Services
             if (user is null) return null;
             user.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Restore,
+                                            "User",
+                                            user.UserId,
+                                            "IsDeleted: Inactive",
+                                            "IsDeleted: Active");
             return await GetByIdAsync(id);
         }
     }

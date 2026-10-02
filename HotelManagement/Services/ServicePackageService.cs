@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class ServicePackageService
     {
         private readonly AppDbContext _context;
-        public ServicePackageService(AppDbContext context) 
+        private readonly AuditLogService _auditLogService;
+        public ServicePackageService(AppDbContext context, AuditLogService auditLogService)
         { 
             _context = context; 
+            _auditLogService = auditLogService;
         }
         private ServicePackageResponseDto MapToResponseDto(ServicePackage package)
         {
@@ -105,6 +107,11 @@ namespace HotelManagement.Services
             var package = MapToEntity(dto);
             await _context.ServicePackages.AddAsync(package);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Create,
+                                            "ServicePackages",
+                                            package.ServicePackageId,
+                                            null,
+                                            $"PackageName: {package.PackageName}, PackagePrice: {package.PackagePrice}");
             return MapToResponseDto(package);
         }
         // Update
@@ -115,8 +122,18 @@ namespace HotelManagement.Services
                                                                 && sp.IsDeleted == ActiveEnums.Active);
             if (package is null) return null;
             await PackageNameExists(dto.PackageName!, id);
+            var oldValue = $"PackageName: {package.PackageName}, " +
+                           $"PackagePrice: {package.PackagePrice}, " +
+                           $"Description: {package.Description}";
             UpdateEntity(package, dto);
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Update,
+                                            "ServicePackages",
+                                            package.ServicePackageId,
+                                            oldValue,
+                                            $"PackageName: {package.PackageName}, " +
+                                            $"PackagePrice: {package.PackagePrice}, " +
+                                            $"Description: {package.Description}");
             return MapToResponseDto(package);
         }
         // Delete
@@ -144,6 +161,11 @@ namespace HotelManagement.Services
             if (package is null) return null;
             package.IsDeleted = ActiveEnums.Inactive;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.SoftDelete,
+                                            "ServicePackages",
+                                            package.ServicePackageId,
+                                            "IsDeleted: Active",
+                                            "IsDeleted: Inactive");
             return MapToResponseDto(package);
         }
         // Khôi phục (Restore)
@@ -155,6 +177,11 @@ namespace HotelManagement.Services
             if (package is null) return null;
             package.IsDeleted = ActiveEnums.Active;
             await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync(AuditLogEnums.Restore,
+                                            "ServicePackages",
+                                            package.ServicePackageId,
+                                            "IsDeleted: Inactive",
+                                            "IsDeleted: Active");
             return MapToResponseDto(package);
         }
     }
