@@ -197,5 +197,49 @@ namespace HotelManagement.Services
                                             "IsDeleted: Active");
             return MapToResponseDto(service);
         }
+        // Tìm kiếm và lọc
+        // Tìm kiếm và lọc Service
+        public async Task<List<ServiceResponseDto>> SearchAsync(ServiceSearchDto request)
+        {
+            // Kiểm tra khoảng giá
+            if (request.MinPrice.HasValue && request.MaxPrice.HasValue && request.MinPrice > request.MaxPrice)
+                throw new BadRequestException("Giá thấp nhất không được lớn hơn giá cao nhất!");
+            // Giá không được âm
+            if (request.MinPrice.HasValue && request.MinPrice < 0)
+                throw new BadRequestException("Giá thấp nhất không được nhỏ hơn 0!");
+            if (request.MaxPrice.HasValue && request.MaxPrice < 0)
+                throw new BadRequestException("Giá cao nhất không được nhỏ hơn 0!");
+            var query = _context.Services
+                                .Where(s => s.IsDeleted == ActiveEnums.Active)
+                                .AsQueryable();
+            // Tìm theo tên
+            if (!string.IsNullOrWhiteSpace(request.Keyword))
+            {
+                var keyword = request.Keyword.Trim();
+                query = query.Where(s => s.ServiceName != null 
+                                      && s.ServiceName.Contains(keyword));
+            }
+
+            // Lọc giá từ
+            if (request.MinPrice.HasValue)
+                query = query.Where(s => s.UnitPrice >= request.MinPrice.Value);
+            // Lọc giá đến
+            if (request.MaxPrice.HasValue)
+                query = query.Where(s => s.UnitPrice <= request.MaxPrice.Value);
+            var services = await query.OrderBy(s => s.ServiceName)
+                                      .Select(s => new ServiceResponseDto
+                                      {
+                                          ServiceId = s.ServiceId,
+                                          ServiceName = s.ServiceName,
+                                          UnitPrice = s.UnitPrice,
+                                          Unit = s.Unit,
+                                          Description = s.Description,
+                                          IsDeleted = s.IsDeleted,
+                                          CreateAt = s.CreateAt,
+                                          UpdateAt = s.UpdateAt
+                                      })
+                                      .ToListAsync();
+            return services;
+        }
     }
 }

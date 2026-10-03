@@ -213,6 +213,56 @@ namespace HotelManagement.Services
             await _context.SaveChangesAsync();
             return await GetByIdAsync(id);
         }
-
+        // Lọc danh sách phòng theo loại/ giá/ sức chứa
+        public async Task<List<RoomResponseDto>> FilterAsync(RoomFilterDto filter)
+        {
+            // Validate
+            if (filter.MinPrice.HasValue && filter.MaxPrice.HasValue && filter.MinPrice.Value > filter.MaxPrice.Value)
+                throw new BadRequestException("Giá tối thiểu không được lớn hơn giá tối đa!");
+            if (filter.MinCapacity.HasValue && filter.MaxCapacity.HasValue && filter.MinCapacity.Value > filter.MaxCapacity.Value)
+                throw new BadRequestException("Sức chứa tối thiểu không được lớn hơn sức chứa tối đa!");
+            if (filter.MinPrice.HasValue && filter.MinPrice.Value < 0)
+                throw new BadRequestException("Giá tối thiểu không được nhỏ hơn 0!");
+            if (filter.MaxPrice.HasValue && filter.MaxPrice.Value < 0)
+                throw new BadRequestException("Giá tối đa không được nhỏ hơn 0!");
+            if (filter.MinCapacity.HasValue && filter.MinCapacity.Value < 0)
+                throw new BadRequestException("Sức chứa tối thiểu không được nhỏ hơn 0!");
+            if (filter.MaxCapacity.HasValue && filter.MaxCapacity.Value < 0)
+                throw new BadRequestException("Sức chứa tối đa không được nhỏ hơn 0!");
+            // Filter
+            var query = _context.Rooms
+                                .Where(r => r.IsDeleted == ActiveEnums.Active)
+                                .AsQueryable();
+            // Lọc theo loại phòng
+            if (filter.RoomTypeId.HasValue)
+                query = query.Where(r => r.RoomTypeId == filter.RoomTypeId.Value);
+            // Lọc giá tối thiểu
+            if (filter.MinPrice.HasValue)
+                query = query.Where(r => r.PricePerNight >= filter.MinPrice.Value);
+            // Lọc giá tối đa
+            if (filter.MaxPrice.HasValue)
+                query = query.Where(r => r.PricePerNight <= filter.MaxPrice.Value);
+            // Lọc sức chứa tối thiểu
+            if (filter.MinCapacity.HasValue)
+                query = query.Where(r => r.Capacity >= filter.MinCapacity.Value);
+            // Lọc sức chứa tối đa
+            if (filter.MaxCapacity.HasValue)
+                query = query.Where(r => r.Capacity <= filter.MaxCapacity.Value);
+            var rooms = await query.OrderBy(r => r.PricePerNight)
+                                        .ThenBy(r => r.RoomName)
+                                   .Select(r => new RoomResponseDto
+                                   {
+                                        RoomId = r.RoomId,
+                                        RoomName = r.RoomName,
+                                        RoomTypeId = r.RoomTypeId,
+                                        PricePerNight = r.PricePerNight,
+                                        Capacity = r.Capacity,
+                                        IsDeleted = r.IsDeleted,
+                                        CreateAt = r.CreateAt,
+                                        UpdateAt = r.UpdateAt
+                                   })
+                                   .ToListAsync();
+            return rooms;
+        }
     }
 }

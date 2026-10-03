@@ -37,6 +37,13 @@ namespace HotelManagement.Controllers
             if (service is null) return NotFound();
             return Ok(service);
         }
+        [Authorize(Roles = "Admin,Staff,Customer")]
+        [HttpGet("search")]
+        public async Task<IActionResult> Search([FromQuery] ServiceSearchDto request)
+        {
+            var services = await _serviceService.SearchAsync(request);
+            return Ok(services);
+        }
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(ServiceCreateDto dto)

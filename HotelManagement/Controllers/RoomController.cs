@@ -37,6 +37,13 @@ namespace HotelManagement.Controllers
             if (room is null) return NotFound();
             return Ok(room);
         }
+        [Authorize(Roles = "Admin,Staff,Customer")]
+        [HttpGet("filter")]
+        public async Task<IActionResult> Filter([FromQuery] RoomFilterDto filter)
+        {
+            var rooms = await _roomService.FilterAsync(filter);
+            return Ok(rooms);
+        }
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(RoomCreateDto dto)
