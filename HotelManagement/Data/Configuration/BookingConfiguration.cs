@@ -33,6 +33,9 @@ namespace HotelManagement.Data.Configuration
                    .IsRequired();
             // PromotionId
             builder.Property(b => b.PromotionId);
+            builder.Property(b => b.PromotionNameSnapshot).HasMaxLength(100);
+            builder.Property(b => b.PromotionDiscountTypeSnapshot).HasConversion<string>().HasMaxLength(20);
+            builder.Property(b => b.PromotionDiscountValueSnapshot).HasPrecision(18, 2);
             // ServicePackageId
             builder.Property(b => b.ServicePackageId);
             // DepositAmount

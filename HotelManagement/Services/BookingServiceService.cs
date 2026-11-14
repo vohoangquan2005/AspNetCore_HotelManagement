@@ -72,6 +72,8 @@ namespace HotelManagement.Services
                 throw new BadRequestException("Đặt phòng đã bị xóa. Không thể thao tác!");
             if (booking.Status == BookingEnums.Cancelled)
                 throw new BadRequestException("Đặt phòng đã bị hủy. Không thể thao tác!");
+            if (booking.Status == BookingEnums.Rejected)
+                throw new BadRequestException("Đặt phòng đã bị từ chối. Không thể thao tác!");
             if (booking.Status == BookingEnums.Completed)
                 throw new BadRequestException("Đặt phòng đã hoàn thành. Không thể thao tác!");
             return booking;

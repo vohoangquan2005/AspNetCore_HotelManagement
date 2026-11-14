@@ -11,10 +11,12 @@ namespace HotelManagement.Services
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
-        public CancellationService(AppDbContext context, AuditLogService auditLogService)
+        private readonly PaymentService _paymentService;
+        public CancellationService(AppDbContext context, AuditLogService auditLogService, PaymentService paymentService)
         {
             _context = context;
             _auditLogService = auditLogService;
+            _paymentService = paymentService;
         }
         // Chuyển Cancellation -> ResponseDto
         private CancellationResponseDto MapToResponseDto(Cancellation cancellation)
@@ -157,10 +159,17 @@ namespace HotelManagement.Services
             return MapToResponseDto(cancellation);
         }
         // Create
-        public async Task<CancellationResponseDto> CreateAsync(CancellationCreateDto dto)
+        public Task<CancellationResponseDto> CreateAsync(CancellationCreateDto dto) => CreateAsync(dto, null);
+
+        public async Task<CancellationResponseDto> CreateForCustomerAsync(CancellationCreateDto dto, int customerId) =>
+            await CreateAsync(dto, customerId);
+
+        private async Task<CancellationResponseDto> CreateAsync(CancellationCreateDto dto, int? ownerCustomerId)
         {
             // Validate
             var booking = await CheckBookingId(dto.BookingId);
+            if (ownerCustomerId.HasValue && booking.CustomerId != ownerCustomerId.Value)
+                throw new NotFoundException("Không tìm thấy đặt phòng!");
             CheckBookingStatus(booking);
             await CheckCancellationExists(dto.BookingId);
             // Tự động tìm policy phù hợp
@@ -214,7 +223,7 @@ namespace HotelManagement.Services
         // Xác nhận hủy đặt phòng
         public async Task<bool> ConfirmAsync(int id)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
             {
                 // Lấy Cancellation + Booking
@@ -232,7 +241,11 @@ namespace HotelManagement.Services
                 CheckBookingStatus(booking);
                 // Xác nhận hủy đặt phòng
                 booking.Status = BookingEnums.Cancelled;
+                cancellation.Status = CancellationEnums.Approved;
                 await _context.SaveChangesAsync();
+                await _paymentService.CancelPendingPaymentsAsync(booking.BookingId);
+                await _paymentService.CreateRefundAsync(booking.BookingId, cancellation.RefundAmount,
+                    $"cancellation:{cancellation.CancellationId}:refund", "CancellationPolicy");
                 await _auditLogService.LogAsync(AuditLogEnums.Confirm,
                                                 "Cancellation",
                                                 cancellation.CancellationId,

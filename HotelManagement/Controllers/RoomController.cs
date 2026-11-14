@@ -15,7 +15,8 @@ namespace HotelManagement.Controllers
         {
             _roomService = roomService;
         }
-        [Authorize(Roles = "Admin,Staff,Customer")]
+
+        [AllowAnonymous]
         [HttpGet]   // Lấy danh sách room đang hoạt động (Active)
         public async Task<IActionResult> GetAll()
         {
@@ -29,7 +30,7 @@ namespace HotelManagement.Controllers
             var rooms = await _roomService.GetDeletedAsync();
             return Ok(rooms);
         }
-        [Authorize(Roles = "Admin,Staff")]
+        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -37,7 +38,7 @@ namespace HotelManagement.Controllers
             if (room is null) return NotFound();
             return Ok(room);
         }
-        [Authorize(Roles = "Admin,Staff,Customer")]
+        [AllowAnonymous]
         [HttpGet("filter")]
         public async Task<IActionResult> Filter([FromQuery] RoomFilterDto filter)
         {

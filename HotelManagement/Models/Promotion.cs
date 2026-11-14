@@ -8,7 +8,8 @@ namespace HotelManagement.Models
         public int PromotionId { get; set; }
         public string? PromotionCode { get; set; }  // Mã khuyến mãi
         public string? PromotionName { get; set; }
-        public decimal? DiscountValue { get; set; } = 0;  // Giá trị giảm (%)
+        public PromotionDiscountTypeEnums DiscountType { get; set; } = PromotionDiscountTypeEnums.Percentage;
+        public decimal? DiscountValue { get; set; } = 0;
         public decimal? MinAmount { get; set; } = 0;// Giá tiền tối thiểu mà khách hàng phải sử dụng để có thể áp dụng khuyến mãi
         public decimal? MaxDisCountAmount { get; set; } // Giá tiền tối đa được giảm
         public int? UsageLimit { get; set; }    // Giới hạn số  lượng áp dụng khuyến mãi

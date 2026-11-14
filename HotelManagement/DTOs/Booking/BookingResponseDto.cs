@@ -22,7 +22,8 @@ namespace HotelManagement.DTOs.Booking
         public int? PromotionId { get; set; }
         public string? PromotionCode { get; set; }
         public string? PromotionName { get; set; }
-        public decimal? DiscountValue { get; set; } = 0;  // Giá trị giảm (%)
+        public PromotionDiscountTypeEnums? DiscountType { get; set; }
+        public decimal? DiscountValue { get; set; } = 0;
         // Thông tin từ ServicePackages
         public int? ServicePackageId { get; set; }
         public string? PackageName { get; set; }

@@ -37,19 +37,25 @@ namespace HotelManagement.Controllers
             if (updateBookingDetail is null) return NotFound();
             return NoContent();
         }
-        [Authorize(Roles = "Admin,Staff")]
+        [Authorize(Roles = "Admin,Staff,Customer")]
         [HttpPut("{id}/checkin")]
         public async Task<IActionResult> CheckIn(int id)
         {
-            var checkIn = await _bookingDetailService.CheckInAsync(id);
+            var customerId = GetCustomerIdForCustomerRequest();
+            if (customerId is null && User.IsInRole("Customer"))
+                return Unauthorized("Mã khách hàng không hợp lệ!");
+            var checkIn = await _bookingDetailService.CheckInAsync(id, customerId);
             if (!checkIn) return NotFound();
             return NoContent();
         }
-        [Authorize(Roles = "Admin,Staff")]
+        [Authorize(Roles = "Admin,Staff,Customer")]
         [HttpPut("{id}/checkout")]
         public async Task<IActionResult> CheckOut(int id)
         {
-            var checkOut = await _bookingDetailService.CheckOutAsync(id);
+            var customerId = GetCustomerIdForCustomerRequest();
+            if (customerId is null && User.IsInRole("Customer"))
+                return Unauthorized("Mã khách hàng không hợp lệ!");
+            var checkOut = await _bookingDetailService.CheckOutAsync(id, customerId);
             if (!checkOut) return NotFound();
             return NoContent();
         }
@@ -60,6 +66,15 @@ namespace HotelManagement.Controllers
             var deleteBookingDetail = await _bookingDetailService.DeleteAsync(id);
             if (!deleteBookingDetail) return NotFound();
             return NoContent();
+        }
+
+        private int? GetCustomerIdForCustomerRequest()
+        {
+            if (!User.IsInRole("Customer")) return null;
+            var claim = User.FindFirst("CustomerId");
+            return claim is not null && int.TryParse(claim.Value, out var customerId)
+                ? customerId
+                : null;
         }
     }
 }

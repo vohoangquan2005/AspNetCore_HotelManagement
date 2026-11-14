@@ -21,6 +21,13 @@ namespace HotelManagement.Controllers
             var roomImages = await _roomImageService.GetAllAsync();
             return Ok(roomImages);
         }
+        [AllowAnonymous]
+        [HttpGet("public")]
+        public async Task<IActionResult> GetPublic()
+        {
+            var roomImages = await _roomImageService.GetPublicAsync();
+            return Ok(roomImages);
+        }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {

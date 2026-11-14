@@ -10,9 +10,11 @@ namespace HotelManagement.Services
     public class ReviewService
     {
         private readonly AppDbContext _context;
-        public ReviewService(AppDbContext context)
+        private readonly InvoiceService _invoiceService;
+        public ReviewService(AppDbContext context, InvoiceService invoiceService)
         {
             _context = context;
+            _invoiceService = invoiceService;
         }
         // Chuyển Review -> ResponseDto
         private ReviewResponseDto MapToResponseDto(Review review)
@@ -77,6 +79,7 @@ namespace HotelManagement.Services
             var exists = await _context.Bookings
                                        .AnyAsync(b => b.BookingId == bookingId 
                                                    && b.CustomerId == customerId 
+                                                   && b.IsDeleted == ActiveEnums.Active
                                                    && b.BookingDetails.Any(bd => bd.RoomId == roomId));
             if (!exists)
                 throw new BadRequestException("Khách hàng, phòng và đặt phòng không hợp lệ!");
@@ -94,9 +97,13 @@ namespace HotelManagement.Services
         // =                           CRUD                          =
         // ===========================================================
         // Get all
-        public async Task<List<ReviewResponseDto>> GetAllAsync()
+        public async Task<List<ReviewResponseDto>> GetAllAsync(bool includeModeration = true)
         {
-            var reviews = await _context.Reviews
+            var query = _context.Reviews.AsQueryable();
+            if (!includeModeration)
+                query = query.Where(r => r.Status == ReviewEnums.Approved);
+
+            var reviews = await query
                                         .Include(r => r.Customer)
                                             .ThenInclude(c => c!.User)
                                         .Include(r => r.Room)
@@ -126,18 +133,104 @@ namespace HotelManagement.Services
             if (review is null) return null;
             return MapToResponseDto(review);
         }
+        public async Task<ReviewResponseDto?> GetForCustomerByIdAsync(int id, int customerId)
+        {
+            var review = await _context.Reviews
+                .Where(r => r.ReviewId == id &&
+                    (r.CustomerId == customerId || r.Status == ReviewEnums.Approved))
+                .Include(r => r.Customer).ThenInclude(c => c!.User)
+                .Include(r => r.Room)
+                .FirstOrDefaultAsync();
+            return review is null ? null : MapToResponseDto(review);
+        }
+
+        public async Task<CustomerBookingReviewsDto> GetForCustomerBookingAsync(int bookingId, int customerId)
+        {
+            var booking = await _context.Bookings
+                .Include(b => b.Invoices)
+                .FirstOrDefaultAsync(b => b.BookingId == bookingId &&
+                    b.CustomerId == customerId && b.IsDeleted == ActiveEnums.Active);
+            if (booking is null)
+                throw new NotFoundException("Không tìm thấy đặt phòng!");
+
+            var finalAmount = booking.Invoices.FirstOrDefault()?.AmountDue
+                ?? (booking.Status == BookingEnums.Completed
+                    ? (await _invoiceService.BuildFinalSnapshotAsync(booking.BookingId)).AmountDue
+                    : decimal.MaxValue);
+            var netPaid = await _context.Payments
+                .Where(p => (p.BookingId == booking.BookingId ||
+                    (p.Invoice != null && p.Invoice.BookingId == booking.BookingId)) &&
+                    p.Status == PaymentEnums.Success)
+                .SumAsync(p => p.PaymentType == PaymentTypeEnums.Refund ? -p.Amount : p.Amount);
+
+            var reviews = await _context.Reviews
+                .Where(r => r.BookingId == bookingId && r.CustomerId == customerId)
+                .Include(r => r.Customer).ThenInclude(c => c!.User)
+                .Include(r => r.Room)
+                .Select(r => new ReviewResponseDto
+                {
+                    ReviewId = r.ReviewId,
+                    CustomerId = r.CustomerId,
+                    CustomerName = r.Customer!.User!.FullName,
+                    RoomId = r.RoomId,
+                    RoomName = r.Room!.RoomName,
+                    BookingId = r.BookingId,
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    Status = r.Status,
+                    CreateAt = r.CreateAt
+                })
+                .ToListAsync();
+
+            return new CustomerBookingReviewsDto
+            {
+                BookingId = bookingId,
+                CanReview = booking.Status == BookingEnums.Completed && netPaid >= finalAmount,
+                Reviews = reviews
+            };
+        }
         // Create
         public async Task<ReviewResponseDto> CreateAsync(
-            ReviewCreateDto dto)
+            ReviewCreateDto dto, int customerId)
         {
-            await CheckCustomerId(dto.CustomerId);
+            dto.CustomerId = customerId;
+            await CheckCustomerId(customerId);
             await CheckRoomId(dto.RoomId);
             await CheckBookingId(dto.BookingId);
             await CheckCustomerBookingRoom(dto.CustomerId, dto.RoomId, dto.BookingId);
+            var booking = await _context.Bookings
+                .Include(b => b.Invoices)
+                .FirstAsync(b => b.BookingId == dto.BookingId && b.IsDeleted == ActiveEnums.Active);
+            if (booking.Status != BookingEnums.Completed)
+                throw new BadRequestException("Chỉ có thể đánh giá sau khi đặt phòng đã hoàn thành!");
+
+            var finalAmount = booking.Invoices.FirstOrDefault()?.AmountDue
+                ?? (await _invoiceService.BuildFinalSnapshotAsync(booking.BookingId)).AmountDue;
+            var netPaid = await _context.Payments
+                .Where(p => (p.BookingId == booking.BookingId ||
+                    (p.Invoice != null && p.Invoice.BookingId == booking.BookingId)) &&
+                    p.Status == PaymentEnums.Success)
+                .SumAsync(p => p.PaymentType == PaymentTypeEnums.Refund ? -p.Amount : p.Amount);
+            if (netPaid < finalAmount)
+                throw new BadRequestException("Cần thanh toán đầy đủ hóa đơn đặt phòng trước khi đánh giá!");
+
             await CheckReviewExists(dto.CustomerId, dto.RoomId, dto.BookingId);
             var review = MapToEntity(dto);
             await _context.Reviews.AddAsync(review);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                var duplicate = await _context.Reviews.AnyAsync(r =>
+                    r.CustomerId == dto.CustomerId &&
+                    r.RoomId == dto.RoomId &&
+                    r.BookingId == dto.BookingId);
+                if (duplicate)
+                    throw new ConflictException("Khách hàng đã đánh giá phòng này trong đặt phòng!");
+                throw;
+            }
             return await GetByIdAsync(review.ReviewId) 
                       ?? throw new NotFoundException("Không tìm thấy đánh giá vừa tạo!");
         }
@@ -170,7 +263,7 @@ namespace HotelManagement.Services
             if (review is null) return false;
             if (review.Status != ReviewEnums.Pending)
                 throw new BadRequestException("Chỉ có thể xác nhận đánh giá đang chờ xử lý");
-            review.Status = ReviewEnums.Approved;
+            review.Status = ReviewEnums.Rejected;
             await _context.SaveChangesAsync();
             return true;
         }

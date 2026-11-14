@@ -35,7 +35,7 @@ namespace HotelManagement.Controllers
             return Ok(user);
         }
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] UserCreateRequestDto request)
+        public async Task<IActionResult> Create([FromForm] UserCreateRequestDto request)
         {
             var createUser = await _userService.CreateAsync(request);
             return CreatedAtAction(nameof(GetById),
@@ -43,7 +43,7 @@ namespace HotelManagement.Controllers
                                     createUser);
         }
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] UserUpdateRequestDto request)
+        public async Task<IActionResult> Update(int id, [FromForm] UserUpdateRequestDto request)
         {
             var updateUser = await _userService.UpdateAsync(id, request);
             if (updateUser is null) return NotFound();

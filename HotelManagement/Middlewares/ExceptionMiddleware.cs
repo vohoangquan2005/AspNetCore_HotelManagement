@@ -23,6 +23,11 @@ namespace HotelManagement.Middlewares
             }
             catch (Exception ex)
             {
+                if (context.Response.HasStarted)
+                {
+                    _logger.LogError(ex, "Exception occurred after the response started for {Path}", context.Request.Path);
+                    throw;
+                }
                 await HandleExceptionAsync(context, ex);
             }
         }
@@ -36,21 +41,30 @@ namespace HotelManagement.Middlewares
                 BadRequestException => (int)HttpStatusCode.BadRequest,
                 NotFoundException => (int)HttpStatusCode.NotFound,
                 ConflictException => (int)HttpStatusCode.Conflict,
-                UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
+                UnauthorizedAccessException => (int)HttpStatusCode.Forbidden,
                 _ => (int)HttpStatusCode.InternalServerError
             };
 
             context.Response.StatusCode = statusCode;
 
-            if (statusCode == (int)HttpStatusCode.InternalServerError)
+            if (statusCode >= (int)HttpStatusCode.InternalServerError)
             {
-                _logger.LogError(exception, "Unhandled Exception: {Message}", exception.Message);
+                _logger.LogError(exception, "Unhandled exception for {Path}", context.Request.Path);
+            }
+            else
+            {
+                _logger.LogWarning("Request {Path} failed with {StatusCode}: {Message}",
+                    context.Request.Path, statusCode, exception.Message);
             }
 
             var response = new
             {
                 statusCode,
-                message = exception.Message
+                success = false,
+                message = statusCode == (int)HttpStatusCode.InternalServerError
+                    ? "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau!"
+                    : exception.Message,
+                errors = (object?)null
             };
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(response));

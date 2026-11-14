@@ -28,6 +28,11 @@ namespace HotelManagement.Data.Configuration
                    .IsRequired()
                    .HasPrecision(18, 2)
                    .HasDefaultValue(0m);
+            builder.Property(p => p.DiscountType)
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasMaxLength(20)
+                   .HasDefaultValue(PromotionDiscountTypeEnums.Percentage);
             // MinAmount
             builder.Property(p => p.MinAmount)
                    .HasPrecision(18, 2)

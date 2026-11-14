@@ -6,6 +6,7 @@
         Confirmed,  // Đã xác nhận
         CheckedIn,  // Đã nhận phòng
         Completed,  // Hoàn thành
-        Cancelled   // Đã hủy
+        Cancelled,  // Đã hủy
+        Rejected    // Bị từ chối
     }
 }

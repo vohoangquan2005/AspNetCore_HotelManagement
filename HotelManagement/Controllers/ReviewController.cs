@@ -15,26 +15,51 @@ namespace HotelManagement.Controllers
         {
             _reviewService = reviewService;
         }
-        [Authorize(Roles = "Admin,Staff")]
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var reviews = await _reviewService.GetAllAsync();
+            var includeModeration = User.IsInRole("Admin") || User.IsInRole("Staff");
+            var reviews = await _reviewService.GetAllAsync(includeModeration);
             return Ok(reviews);
         }
-        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var review = await _reviewService.GetByIdAsync(id);
+            ReviewResponseDto? review;
+            if (User.IsInRole("Customer"))
+            {
+                var customerIdClaim = User.FindFirst("CustomerId");
+                if (customerIdClaim is null || !int.TryParse(customerIdClaim.Value, out var customerId))
+                    return Unauthorized("Không phải tài khoản khách hàng hợp lệ!");
+                review = await _reviewService.GetForCustomerByIdAsync(id, customerId);
+            }
+            else
+            {
+                review = await _reviewService.GetByIdAsync(id);
+            }
             if (review is null) return NotFound();
             return Ok(review);
+        }
+        [Authorize(Roles = "Customer")]
+        [HttpGet("my-bookings/{bookingId:int}")]
+        public async Task<IActionResult> GetMyBookingReviews(int bookingId)
+        {
+            var customerIdClaim = User.FindFirst("CustomerId");
+            if (customerIdClaim is null || !int.TryParse(customerIdClaim.Value, out var customerId))
+                return Unauthorized("Không phải tài khoản khách hàng hợp lệ!");
+
+            return Ok(await _reviewService.GetForCustomerBookingAsync(bookingId, customerId));
         }
         [Authorize(Roles = "Customer")]
         [HttpPost]
         public async Task<IActionResult> Create(ReviewCreateDto dto)
         {
-            var review = await _reviewService.CreateAsync(dto);
+            var customerIdClaim = User.FindFirst("CustomerId");
+            if (customerIdClaim is null || !int.TryParse(customerIdClaim.Value, out var customerId))
+                return Unauthorized("Không phải tài khoản khách hàng hợp lệ!");
+
+            var review = await _reviewService.CreateAsync(dto, customerId);
             return CreatedAtAction(nameof(GetById),
                                    new { id = review.ReviewId },
                                    review);

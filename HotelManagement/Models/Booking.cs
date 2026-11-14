@@ -13,6 +13,9 @@ namespace HotelManagement.Models
         public int GuestCount { get; set; }             // Số lượng khách ở
         public int RoomCount { get; set; }              // Số phòng đã đặt
         public int? PromotionId { get; set; }
+        public string? PromotionNameSnapshot { get; set; }
+        public PromotionDiscountTypeEnums? PromotionDiscountTypeSnapshot { get; set; }
+        public decimal? PromotionDiscountValueSnapshot { get; set; }
         public int? ServicePackageId { get; set; }
         public decimal DepositAmount { get; set; }      // Tiền đặt cọc
         public decimal RoomAmount { get; set; }         // Tiền phòng (PricePerNight * số ngày ở) của tất cả Booking Detail
@@ -32,6 +35,7 @@ namespace HotelManagement.Models
         public ICollection<BookingDetail> BookingDetails { get; set; } = new List<BookingDetail>();
         public ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();
         public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
         public ICollection<Cancellation> Cancellations { get; set; } = new List<Cancellation>();
     }

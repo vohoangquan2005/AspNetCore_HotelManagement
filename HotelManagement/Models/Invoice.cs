@@ -13,6 +13,14 @@ namespace HotelManagement.Models
         public InvoiceEnums Status { get; set; }  // "Chưa thanh toán" "Thanh toán 1 phần" "Đã thanh toán"
         public int ? CreatedByUserId { get; set; } // Người tạo hóa đơn
         public DateTime? CreateAt { get; set; }
+        public string? CustomerFullName { get; set; }
+        public string? CustomerCCCD { get; set; }
+        public string? CustomerNationality { get; set; }
+        public DateTime? ExpectedCheckIn { get; set; }
+        public DateTime? ExpectedCheckOut { get; set; }
+        public DateTime? ActualCheckIn { get; set; }
+        public DateTime? ActualCheckOut { get; set; }
+        public string? LineItemsJson { get; set; }
         // Relationship
         public Booking? Booking { get; set; }
         public User? CreatedByUser { get; set; }

@@ -32,7 +32,21 @@ namespace HotelManagement.Services
                 Status = room.Status,
                 IsDeleted = room.IsDeleted,
                 CreateAt = room.CreateAt,
-                UpdateAt = room.UpdateAt
+                UpdateAt = room.UpdateAt,
+                RoomImages = room.RoomImages
+                    .OrderByDescending(image => image.IsPrimary)
+                    .ThenBy(image => image.DisplayOrder)
+                    .Select(image => new HotelManagement.DTOs.RoomImage.RoomImageResponseDto
+                    {
+                        RoomImageId = image.RoomImageId,
+                        RoomId = image.RoomId,
+                        RoomName = room.RoomName,
+                        ImageUrl = image.ImageUrl,
+                        IsPrimary = image.IsPrimary,
+                        DisplayOrder = image.DisplayOrder,
+                        CreateAt = image.CreateAt,
+                        UpdateAt = image.UpdateAt
+                    }).ToList()
             };
         }
         // Chuyển RoomCreateDto -> Room
@@ -82,53 +96,30 @@ namespace HotelManagement.Services
         // Get all Active(Lấy room còn hoạt động)
         public async Task<List<RoomResponseDto>> GetAllAsync()
         {
-            var rooms = await _context.Rooms.Where(r => r.IsDeleted == ActiveEnums.Active)
-                                            .OrderBy(r => r.RoomTypeId)
-                                                .ThenBy(r => r.RoomName)
-                                            .Select(r => new RoomResponseDto
-                                            {
-                                                RoomId = r.RoomId,
-                                                RoomName = r.RoomName,
-                                                RoomTypeId = r.RoomTypeId,
-                                                RoomTypeName = r.RoomType!.RoomTypeName,
-                                                Capacity = r.Capacity,
-                                                Location = r.Location,
-                                                PricePerNight = r.PricePerNight,
-                                                Description = r.Description,
-                                                Status = r.Status,
-                                                IsDeleted = r.IsDeleted,
-                                                CreateAt = r.CreateAt,
-                                                UpdateAt = r.UpdateAt
-                                            }).ToListAsync();
-            return rooms;
+            var rooms = await _context.Rooms
+                .Where(r => r.IsDeleted == ActiveEnums.Active)
+                .Include(r => r.RoomType)
+                .Include(r => r.RoomImages)
+                .OrderBy(r => r.RoomTypeId)
+                .ThenBy(r => r.RoomName)
+                .ToListAsync();
+            return rooms.Select(MapToResponseDto).ToList();
         }
         // Get all InActive(Lấy room không hoạt động)
         public async Task<List<RoomResponseDto>> GetDeletedAsync()
         {
-            var rooms = await _context.Rooms.Where(r => r.IsDeleted == ActiveEnums.Inactive)
-                                            .OrderBy(r => r.RoomName)
-                                                .ThenBy(r => r.RoomName)
-                                            .Select(r => new RoomResponseDto
-                                            {
-                                                RoomId = r.RoomId,
-                                                RoomName = r.RoomName,
-                                                RoomTypeId = r.RoomTypeId,
-                                                RoomTypeName = r.RoomType!.RoomTypeName,
-                                                Capacity = r.Capacity,
-                                                Location = r.Location,
-                                                PricePerNight = r.PricePerNight,
-                                                Description = r.Description,
-                                                Status = r.Status,
-                                                IsDeleted = r.IsDeleted,
-                                                CreateAt = r.CreateAt,
-                                                UpdateAt = r.UpdateAt
-                                            }).ToListAsync();
-            return rooms;
+            var rooms = await _context.Rooms
+                .Where(r => r.IsDeleted == ActiveEnums.Inactive)
+                .Include(r => r.RoomType)
+                .Include(r => r.RoomImages)
+                .OrderBy(r => r.RoomName)
+                .ToListAsync();
+            return rooms.Select(MapToResponseDto).ToList();
         }
         // Get by Id
         public async Task<RoomResponseDto?> GetByIdAsync(int id)
         {
-            var room = await _context.Rooms.Include(r => r.RoomType)
+            var room = await _context.Rooms.Include(r => r.RoomType).Include(r => r.RoomImages)
                                            .FirstOrDefaultAsync(r => r.RoomId == id
                                                                   && r.IsDeleted == ActiveEnums.Active);
             if (room is null) return null;
@@ -248,21 +239,13 @@ namespace HotelManagement.Services
             // Lọc sức chứa tối đa
             if (filter.MaxCapacity.HasValue)
                 query = query.Where(r => r.Capacity <= filter.MaxCapacity.Value);
-            var rooms = await query.OrderBy(r => r.PricePerNight)
-                                        .ThenBy(r => r.RoomName)
-                                   .Select(r => new RoomResponseDto
-                                   {
-                                        RoomId = r.RoomId,
-                                        RoomName = r.RoomName,
-                                        RoomTypeId = r.RoomTypeId,
-                                        PricePerNight = r.PricePerNight,
-                                        Capacity = r.Capacity,
-                                        IsDeleted = r.IsDeleted,
-                                        CreateAt = r.CreateAt,
-                                        UpdateAt = r.UpdateAt
-                                   })
-                                   .ToListAsync();
-            return rooms;
+            var rooms = await query
+                .Include(r => r.RoomType)
+                .Include(r => r.RoomImages)
+                .OrderBy(r => r.PricePerNight)
+                .ThenBy(r => r.RoomName)
+                .ToListAsync();
+            return rooms.Select(MapToResponseDto).ToList();
         }
     }
 }

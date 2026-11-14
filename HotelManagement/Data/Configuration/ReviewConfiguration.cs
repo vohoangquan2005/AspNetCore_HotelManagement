@@ -13,6 +13,8 @@ namespace HotelManagement.Data.Configuration
             builder.ToTable("Reviews");
             // Primary Key
             builder.HasKey(r => r.ReviewId);
+            builder.HasIndex(r => new { r.CustomerId, r.RoomId, r.BookingId })
+                   .IsUnique();
             // CustomerId
             builder.Property(r => r.CustomerId)
                    .IsRequired();

@@ -28,6 +28,33 @@ namespace HotelManagement.Controllers
             var profile = await _authService.GetProfileAsync(userId);
             return Ok(profile);
         }
+        [Authorize]
+        [HttpPut("profile")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UpdateProfile([FromForm] UpdateMyProfileDto dto)
+        {
+            var userId = GetAuthenticatedUserId();
+            if (userId is null) return Unauthorized();
+
+            var profile = await _authService.UpdateMyProfileAsync(userId.Value, dto);
+            return Ok(profile);
+        }
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userId = GetAuthenticatedUserId();
+            if (userId is null) return Unauthorized();
+
+            await _authService.ChangePasswordAsync(userId.Value, dto);
+            return Ok(new { message = "Đổi mật khẩu thành công!" });
+        }
+
+        private int? GetAuthenticatedUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(userIdClaim, out var userId) ? userId : null;
+        }
         // REGISTER
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)

@@ -105,6 +105,13 @@ namespace HotelManagement.Controllers
             return Ok(booking);
         }
         [Authorize(Roles = "Admin,Staff")]
+        [HttpPut("{id}/reject")]
+        public async Task<IActionResult> Reject(int id)
+        {
+            var rejected = await _bookingService.RejectAsync(id);
+            return rejected ? NoContent() : NotFound();
+        }
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPatch("{id}/soft-deleted")]
         public async Task<IActionResult> SoftDeleted(int id)
         {

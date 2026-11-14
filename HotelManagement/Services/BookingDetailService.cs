@@ -12,10 +12,12 @@ namespace HotelManagement.Services
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
-        public BookingDetailService(AppDbContext context, AuditLogService auditLogService)
+        private readonly PaymentService _paymentService;
+        public BookingDetailService(AppDbContext context, AuditLogService auditLogService, PaymentService paymentService)
         {
             _context = context;
             _auditLogService = auditLogService;
+            _paymentService = paymentService;
         }
         // Chuyển BookingDetail -> ResponseDto
         private BookingDetailResponseDto MapToResponseDto(BookingDetail bookingDetail)
@@ -26,6 +28,7 @@ namespace HotelManagement.Services
                 BookingId = bookingDetail.BookingId,
                 RoomId = bookingDetail.RoomId,
                 RoomName = bookingDetail.Room?.RoomName,
+                RoomTypeName = bookingDetail.Room?.RoomType?.RoomTypeName,
                 ActualCheckIn = bookingDetail.ActualCheckIn,
                 ActualCheckOut = bookingDetail.ActualCheckOut,
                 PricePerNight = bookingDetail.PricePerNight,
@@ -91,8 +94,7 @@ namespace HotelManagement.Services
         {
             if (actualCheckIn is null || actualCheckOut is null) return 0;
             var numberOfNights = (actualCheckOut.Value.Date - actualCheckIn.Value.Date).Days;
-            if (numberOfNights <= 0)
-                throw new BadRequestException("Thời gian trả phòng phải sau thời gian nhận phòng!");
+            if (numberOfNights <= 0) numberOfNights = 1;
             return numberOfNights * pricePerNight;
         }
         // Check phòng đã được check in chưa?
@@ -105,10 +107,10 @@ namespace HotelManagement.Services
         {
             if (status == BookingEnums.Pending)
                 throw new BadRequestException("Đặt phòng chưa được xác nhận. Không thể check-in!");
-            if (status == BookingEnums.CheckedIn)
-                throw new ConflictException("Đặt phòng nãy đã được check-in rồi!");
             if (status == BookingEnums.Cancelled)
                 throw new BadRequestException("Đặt phòng đã bị hủy. Không thể check-in!");
+            if (status == BookingEnums.Rejected)
+                throw new BadRequestException("Đặt phòng đã bị từ chối. Không thể check-in!");
             if (status == BookingEnums.Completed)
                 throw new BadRequestException("Đặt phòng này đã hoàn thành. Không thể check-in!");
         }
@@ -130,6 +132,7 @@ namespace HotelManagement.Services
                 BookingId = bd.BookingId,
                 RoomId = bd.RoomId,
                 RoomName = bd.Room!.RoomName,
+                RoomTypeName = bd.Room!.RoomType!.RoomTypeName,
                 ActualCheckIn = bd.ActualCheckIn,
                 ActualCheckOut = bd.ActualCheckOut,
                 PricePerNight = bd.PricePerNight,
@@ -143,6 +146,7 @@ namespace HotelManagement.Services
         public async Task<BookingDetailResponseDto?> GetByIdAsync(int id)
         {
             var bookingDetail = await _context.BookingDetails.Include(bd => bd.Room)
+                                                             .ThenInclude(room => room!.RoomType)
                                                              .FirstOrDefaultAsync(bd => bd.BookingDetailId == id);
             if (bookingDetail is null) return null;
             return MapToResponseDto(bookingDetail);
@@ -152,6 +156,9 @@ namespace HotelManagement.Services
         {
             var bookingDetail = await _context.BookingDetails.FindAsync(id);
             if (bookingDetail is null) return null;
+            var lockedBooking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingDetail.BookingId);
+            if (lockedBooking?.Status == BookingEnums.Completed || await _context.Invoices.AnyAsync(i => i.BookingId == bookingDetail.BookingId))
+                throw new BadRequestException("Không thể sửa chi tiết lưu trú sau khi đã checkout hoặc lập hóa đơn!");
             await CheckBookingId(dto.BookingId);
             await CheckRoomId(dto.RoomId);
             await CheckBookingRoom(dto.RoomId, dto.BookingId, id);
@@ -184,12 +191,15 @@ namespace HotelManagement.Services
         {
             var bookingDetail = await _context.BookingDetails.FindAsync(id);
             if (bookingDetail is null) return false;
+            var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingDetail.BookingId);
+            if (booking?.Status == BookingEnums.Completed || await _context.Invoices.AnyAsync(i => i.BookingId == bookingDetail.BookingId))
+                throw new BadRequestException("Không thể xóa chi tiết lưu trú sau khi đã checkout hoặc lập hóa đơn!");
             _context.BookingDetails.Remove(bookingDetail);
             await _context.SaveChangesAsync();
             return true;
         }
         // Xác nhận CheckIn
-        public async Task<bool> CheckInAsync(int id)
+        public async Task<bool> CheckInAsync(int id, int? customerId = null)
         {
             var bookingDetail = await _context.BookingDetails
                                               .Include(bd => bd.Booking)
@@ -199,6 +209,10 @@ namespace HotelManagement.Services
             var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingDetail.BookingId);
             if (booking is null)
                 throw new NotFoundException("Đặt phòng không tồn tại!");
+            if (customerId.HasValue && booking.CustomerId != customerId.Value)
+                throw new NotFoundException("Không tìm thấy chi tiết phòng trong đặt phòng!");
+            if (booking.IsDeleted == ActiveEnums.Inactive)
+                throw new BadRequestException("Đặt phòng đã bị xóa. Không thể check-in!");
             // Kiểm tra booking đã được xác nhận chưa?
             CheckBookingStatus(bookingDetail.Booking!.Status);
             // Kiểm tra đã được check in chưa
@@ -217,28 +231,44 @@ namespace HotelManagement.Services
             return true;
         }
         // Xác nhận CheckOut
-        public async Task<bool> CheckOutAsync(int id)
+        public async Task<bool> CheckOutAsync(int id, int? customerId = null)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var bookingDetail = await _context.BookingDetails.FindAsync(id);
             if (bookingDetail is null) return false;
             // Check booking có tồn tại không?
             var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingDetail.BookingId);
             if (booking is null)
                 throw new NotFoundException("Đặt phòng không tồn tại!");
+            if (customerId.HasValue && booking.CustomerId != customerId.Value)
+                throw new NotFoundException("Không tìm thấy chi tiết phòng trong đặt phòng!");
+            if (booking.IsDeleted == ActiveEnums.Inactive)
+                throw new BadRequestException("Đặt phòng đã bị xóa. Không thể check-out!");
+            if (booking.Status != BookingEnums.CheckedIn)
+                throw new ConflictException("Đặt phòng chưa ở trạng thái nhận phòng!");
             if (!CheckInExists(bookingDetail.ActualCheckIn))
                 throw new ConflictException("Phòng này chưa được check-in!");
-            // Kiểm tra booking còn booking detail nào chưa check out không?
-            var hasOtherActiveRoom = await _context.BookingDetails
-                                                   .AnyAsync(bd => bd.BookingId == booking.BookingId 
-                                                                && bd.BookingDetailId != id 
-                                                                && bd.ActualCheckIn != null 
-                                                                && bd.ActualCheckOut == null);
             CheckOutExists(bookingDetail!.ActualCheckOut);
             bookingDetail.ActualCheckOut = DateTime.Now;
-            // Chỉ cập nhật trạng thái Booking thành Completed khi tất cả các booking detail đều đã check out
-            if(!hasOtherActiveRoom)
-                booking.Status = BookingEnums.Completed;
+            bookingDetail.TotalAmount = CalculateTotalAmount(bookingDetail.ActualCheckIn, bookingDetail.ActualCheckOut, bookingDetail.PricePerNight);
             await _context.SaveChangesAsync();
+            var hasOtherNotCheckedOut = await _context.BookingDetails.AnyAsync(bd => bd.BookingId == booking.BookingId
+                && bd.BookingDetailId != id && bd.ActualCheckOut == null);
+            if (!hasOtherNotCheckedOut)
+            {
+                var details = await _context.BookingDetails.Where(bd => bd.BookingId == booking.BookingId).ToListAsync();
+                var roomAmount = details.Sum(bd => bd.TotalAmount);
+                var serviceAmount = await _context.BookingServices.Where(bs => bs.BookingId == booking.BookingId).SumAsync(bs => (decimal?)bs.TotalAmount) ?? 0m;
+                var grossBeforeDiscount = roomAmount + booking.PackageAmount + serviceAmount;
+                booking.RoomAmount = roomAmount;
+                booking.AdditionalServiceAmount = serviceAmount;
+                booking.DiscountAmount = Math.Min(booking.DiscountAmount, grossBeforeDiscount);
+                booking.TotalAmount = Math.Max(0, grossBeforeDiscount - booking.DiscountAmount);
+                booking.Status = BookingEnums.Completed;
+            }
+            await _context.SaveChangesAsync();
+            if (!hasOtherNotCheckedOut)
+                await _paymentService.CreateFinalPaymentAsync(booking.BookingId);
             await _auditLogService.LogAsync(AuditLogEnums.CheckOut,
                                             "BookingDetails",
                                             bookingDetail.BookingDetailId,
@@ -246,6 +276,7 @@ namespace HotelManagement.Services
                                             $"ActualCheckOut: {bookingDetail.ActualCheckOut}, " +
                                             $"BookingId: {bookingDetail.BookingId}, " +
                                             $"RoomId: {bookingDetail.RoomId}");
+            await transaction.CommitAsync();
             return true;
         }
     }

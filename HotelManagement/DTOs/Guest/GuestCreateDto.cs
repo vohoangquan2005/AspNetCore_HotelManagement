@@ -14,7 +14,7 @@ namespace HotelManagement.DTOs.Guest
         public string? Gender { get; set; }
         [StringLength(50, ErrorMessage = "Quốc tịch không vượt quá 50 ký tự!")]
         public string? Nationality { get; set; } = "Việt Nam";
-        [StringLength(10, ErrorMessage = "Số điện thoại không vượt quá 10 ký tự!")]
+        [StringLength(100, ErrorMessage = "Số điện thoại không vượt quá 10 ký tự!")]
         public string? PhoneNumber { get; set; }
         [StringLength(10, ErrorMessage = "Email không vượt quá 100 ký tự!")]
         public string? Email { get; set; }

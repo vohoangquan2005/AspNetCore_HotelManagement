@@ -14,8 +14,11 @@ namespace HotelManagement.Data.Configuration
             // Primary Key
             builder.HasKey(p => p.PaymentId);
             // InvoiceId
-            builder.Property(p => p.InvoiceId)
-                   .IsRequired();
+            builder.Property(p => p.InvoiceId);
+            builder.Property(p => p.BookingId);
+            builder.Property(p => p.RequestKey).HasMaxLength(160);
+            builder.Property(p => p.RefundSource).HasMaxLength(80);
+            builder.Property(p => p.InvoiceSnapshotJson);
             // Amount
             builder.Property(p => p.Amount)
                    .IsRequired()
@@ -49,11 +52,18 @@ namespace HotelManagement.Data.Configuration
                    .WithMany(i => i.Payments)
                    .HasForeignKey(p => p.InvoiceId)
                    .OnDelete(DeleteBehavior.Cascade);
+            builder.HasOne(p => p.Booking)
+                   .WithMany(b => b.Payments)
+                   .HasForeignKey(p => p.BookingId)
+                   .OnDelete(DeleteBehavior.Restrict);
             // User 1 - N Payment
             builder.HasOne(p => p.CreatedByUser)
                    .WithMany(u => u.CreatedPayments)
                    .HasForeignKey(p => p.CreatedByUserId)
                    .OnDelete(DeleteBehavior.SetNull);
+            builder.HasIndex(p => p.RequestKey)
+                   .IsUnique()
+                   .HasFilter("[RequestKey] IS NOT NULL AND [Status] <> 'Failed'");
         }
     }
 }

@@ -24,7 +24,7 @@ namespace HotelManagement.Data.Configuration
             builder.Property(i => i.TaxAmount)
                    .IsRequired()
                    .HasPrecision(18, 2)
-                   .HasDefaultValue(10m);
+                   .HasDefaultValue(0m);
             // DiscountAmount
             builder.Property(i => i.DiscountAmount)
                    .IsRequired()
@@ -43,6 +43,11 @@ namespace HotelManagement.Data.Configuration
             // CreateAt
             builder.Property(i => i.CreateAt)
                    .HasDefaultValueSql("GETDATE()");
+            builder.Property(i => i.CustomerFullName).HasMaxLength(200);
+            builder.Property(i => i.CustomerCCCD).HasMaxLength(30);
+            builder.Property(i => i.CustomerNationality).HasMaxLength(100);
+            builder.Property(i => i.LineItemsJson);
+            builder.HasIndex(i => i.BookingId).IsUnique();
             // Relationships
             // Booking 1 - N Invoice
             builder.HasOne(i => i.Booking)

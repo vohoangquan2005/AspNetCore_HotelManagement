@@ -12,6 +12,12 @@ namespace HotelManagement.Services
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
+        private static DateTime NormalizeUtc(DateTime value) => value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
         public PromotionService(AppDbContext context, AuditLogService auditLogService)
         {
             _context = context;
@@ -24,13 +30,14 @@ namespace HotelManagement.Services
                 PromotionId = promotion.PromotionId,
                 PromotionCode= promotion.PromotionCode,
                 PromotionName= promotion.PromotionName,
+                DiscountType = promotion.DiscountType,
                 DiscountValue= promotion.DiscountValue,
                 MinAmount= promotion.MinAmount,
                 MaxDisCountAmount = promotion.MaxDisCountAmount,
                 UsageLimit= promotion.UsageLimit,
                 UsedCount = promotion.UsedCount,
-                StartDate= promotion.StartDate,
-                EndDate = promotion.EndDate,
+                StartDate= DateTime.SpecifyKind(promotion.StartDate, DateTimeKind.Utc),
+                EndDate = DateTime.SpecifyKind(promotion.EndDate, DateTimeKind.Utc),
                 IsDeleted = promotion.IsDeleted,
                 CreateAt = promotion.CreateAt,
                 UpdateAt = promotion.UpdateAt
@@ -43,12 +50,13 @@ namespace HotelManagement.Services
             {
                 PromotionCode = dto.PromotionCode,
                 PromotionName = dto.PromotionName,
+                DiscountType = dto.DiscountType,
                 DiscountValue = dto.DiscountValue,
                 MinAmount = dto.MinAmount,
                 MaxDisCountAmount = dto.MaxDisCountAmount,
                 UsageLimit = dto.UsageLimit,
-                StartDate = dto.StartDate,
-                EndDate = dto.EndDate
+                StartDate = NormalizeUtc(dto.StartDate),
+                EndDate = NormalizeUtc(dto.EndDate)
             };
         }
         // Update Promotion từ PromotionUpdateDto
@@ -56,12 +64,13 @@ namespace HotelManagement.Services
         {
             promotion.PromotionCode = dto.PromotionCode;
             promotion.PromotionName = dto.PromotionName;
+            promotion.DiscountType = dto.DiscountType;
             promotion.DiscountValue = dto.DiscountValue;
             promotion.MinAmount = dto.MinAmount;
             promotion.MaxDisCountAmount = dto.MaxDisCountAmount;
             promotion.UsageLimit = dto.UsageLimit;
-            promotion.StartDate = dto.StartDate;
-            promotion.EndDate = dto.EndDate;
+            promotion.StartDate = NormalizeUtc(dto.StartDate);
+            promotion.EndDate = NormalizeUtc(dto.EndDate);
         }
         // ===========================================================
         // =                       VALIDATION                        =
@@ -85,16 +94,25 @@ namespace HotelManagement.Services
         // Check Date
         private void CheckDate(DateTime startDate, DateTime endDate, bool isCreate = false)
         {
-            if (isCreate && startDate < DateTime.Today)
-                throw new BadRequestException("Ngày bắt đầu áp dụng không được trước hôm nay!");
-            if (endDate < startDate)
-                throw new BadRequestException("Ngày kết thúc áp dụng không được trước ngày bắt đầu áp dụng!");
+            var startUtc = NormalizeUtc(startDate);
+            var endUtc = NormalizeUtc(endDate);
+            if (isCreate && startUtc <= DateTime.UtcNow)
+                throw new BadRequestException("Thời gian bắt đầu khuyến mãi phải lớn hơn thời gian hiện tại!");
+            if (endUtc <= startUtc)
+                throw new BadRequestException("Thời gian kết thúc phải sau thời gian bắt đầu!");
         }
         // Check UsageLimit
         private void CheckUsageLimit(int? usageLimit, int usedCount)
         {
             if (usageLimit.HasValue && usageLimit.Value < usedCount)
                 throw new BadRequestException("Giới hạn sử dụng không được nhỏ hơn số lần sử dụng!");
+        }
+        private static void CheckDiscount(PromotionDiscountTypeEnums discountType, decimal? discountValue)
+        {
+            if (!Enum.IsDefined(discountType))
+                throw new BadRequestException("Hình thức giảm giá không hợp lệ!");
+            if (discountType == PromotionDiscountTypeEnums.Percentage && discountValue is > 100)
+                throw new BadRequestException("Phần trăm khuyến mãi phải từ 0 đến 100!");
         }
         // ===========================================================
         // =                      APPLY PROMOTION                    =
@@ -177,6 +195,7 @@ namespace HotelManagement.Services
                                                 PromotionId = p.PromotionId,
                                                 PromotionCode = p.PromotionCode,
                                                 PromotionName = p.PromotionName,
+                                                DiscountType = p.DiscountType,
                                                 DiscountValue = p.DiscountValue,
                                                 MinAmount = p.MinAmount,
                                                 MaxDisCountAmount = p.MaxDisCountAmount,
@@ -188,7 +207,12 @@ namespace HotelManagement.Services
                                                 CreateAt = p.CreateAt,
                                                 UpdateAt = p.UpdateAt
                                             }).ToListAsync();
-            return promotions;
+            return promotions.Select(p =>
+            {
+                p.StartDate = DateTime.SpecifyKind(p.StartDate, DateTimeKind.Utc);
+                p.EndDate = DateTime.SpecifyKind(p.EndDate, DateTimeKind.Utc);
+                return p;
+            }).ToList();
         }
         // Get all InActive(Lấy promotion không hoạt động)
         public async Task<List<PromotionResponseDto>> GetDeletedAsync()
@@ -201,6 +225,7 @@ namespace HotelManagement.Services
                                                 PromotionId = p.PromotionId,
                                                 PromotionCode = p.PromotionCode,
                                                 PromotionName = p.PromotionName,
+                                                DiscountType = p.DiscountType,
                                                 DiscountValue = p.DiscountValue,
                                                 MinAmount = p.MinAmount,
                                                 MaxDisCountAmount = p.MaxDisCountAmount,
@@ -212,7 +237,12 @@ namespace HotelManagement.Services
                                                 CreateAt = p.CreateAt,
                                                 UpdateAt = p.UpdateAt
                                             }).ToListAsync();
-            return promotions;
+            return promotions.Select(p =>
+            {
+                p.StartDate = DateTime.SpecifyKind(p.StartDate, DateTimeKind.Utc);
+                p.EndDate = DateTime.SpecifyKind(p.EndDate, DateTimeKind.Utc);
+                return p;
+            }).ToList();
         }
         // Get by Id
         public async Task<PromotionResponseDto?> GetByIdAsync(int id)
@@ -233,6 +263,7 @@ namespace HotelManagement.Services
                 await PromotionCodeExists(request.Promotion.PromotionCode!);
                 await PromotionNameExists(request.Promotion.PromotionName!);
                 CheckDate(request.Promotion.StartDate, request.Promotion.EndDate, true);
+                CheckDiscount(request.Promotion.DiscountType, request.Promotion.DiscountValue);
                 CheckUsageLimit(request.Promotion.UsageLimit, 0);
                 // Create Promotion
                 var promotion = MapToEntity(request.Promotion);
@@ -276,6 +307,7 @@ namespace HotelManagement.Services
                 await PromotionCodeExists(request.Promotion.PromotionCode!, id);
                 await PromotionNameExists(request.Promotion.PromotionName!, id);
                 CheckDate(request.Promotion.StartDate, request.Promotion.EndDate);
+                CheckDiscount(request.Promotion.DiscountType, request.Promotion.DiscountValue);
                 CheckUsageLimit(request.Promotion.UsageLimit, promotion.UsedCount ?? 0);
                 var oldValue = $"PromotionCode: {promotion.PromotionCode}, " +
                                $"PromotionName: {promotion.PromotionName}, " +

@@ -5,6 +5,9 @@ namespace HotelManagement.Data
 {
     public class DbSeeder
     {
+        private static DateTime UtcDate(int year, int month, int day) =>
+            DateTime.SpecifyKind(new DateTime(year, month, day), DateTimeKind.Utc);
+
         public static void Seed(AppDbContext context)
         {
 // =============================================== ROLE ===============================================
@@ -382,37 +385,40 @@ namespace HotelManagement.Data
                     {
                         PromotionCode = "WELCOME10",
                         PromotionName = "Giảm 10% cho khách hàng mới",
+                        DiscountType = PromotionDiscountTypeEnums.Percentage,
                         DiscountValue = 10m,
                         MinAmount = 500000m,
                         MaxDisCountAmount = 200000m,
                         UsageLimit = 100,
                         UsedCount = 0,
-                        StartDate = new DateTime(2026, 1, 1),
-                        EndDate = new DateTime(2026, 12, 31)
+                        StartDate = UtcDate(2026, 1, 1),
+                        EndDate = UtcDate(2027, 1, 1)
                     },
                     new Promotion
                     {
                         PromotionCode = "SUMMER15",
                         PromotionName = "Ưu đãi mùa hè",
+                        DiscountType = PromotionDiscountTypeEnums.Percentage,
                         DiscountValue = 15m,
                         MinAmount = 1000000m,
                         MaxDisCountAmount = 300000m,
                         UsageLimit = 50,
                         UsedCount = 0,
-                        StartDate = new DateTime(2026, 5, 1),
-                        EndDate = new DateTime(2026, 9, 30)
+                        StartDate = UtcDate(2026, 5, 1),
+                        EndDate = UtcDate(2026, 10, 1)
                     },
                     new Promotion
                     {
                         PromotionCode = "VIP20",
                         PromotionName = "Ưu đãi khách hàng VIP",
+                        DiscountType = PromotionDiscountTypeEnums.Percentage,
                         DiscountValue = 20m,
                         MinAmount = 2000000m,
                         MaxDisCountAmount = 500000m,
                         UsageLimit = 30,
                         UsedCount = 0,
-                        StartDate = new DateTime(2026, 1, 1),
-                        EndDate = new DateTime(2026, 12, 31)
+                        StartDate = UtcDate(2026, 1, 1),
+                        EndDate = UtcDate(2027, 1, 1)
                     }
                 };
                 context.Promotions.AddRange(promotions);
@@ -533,6 +539,8 @@ namespace HotelManagement.Data
                     .First(c => c.User!.Email == "cuong@gmail.com");
                 var welcome10 = context.Promotions
                     .First(p => p.PromotionCode == "WELCOME10");
+                var summer15 = context.Promotions
+                    .First(p => p.PromotionCode == "SUMMER15");
                 var vip20 = context.Promotions
                     .First(p => p.PromotionCode == "VIP20");
                 var breakfastPackage = context.ServicePackages
@@ -551,6 +559,9 @@ namespace HotelManagement.Data
                         GuestCount = 2,
                         RoomCount = 1,
                         PromotionId = welcome10.PromotionId,
+                        PromotionNameSnapshot = welcome10.PromotionName,
+                        PromotionDiscountTypeSnapshot = welcome10.DiscountType,
+                        PromotionDiscountValueSnapshot = welcome10.DiscountValue,
                         ServicePackageId = breakfastPackage.ServicePackageId,
                         DepositAmount = 200000m,
                         RoomAmount = 600000m,
@@ -570,14 +581,17 @@ namespace HotelManagement.Data
                         ExpectedCheckOut = new DateTime(2026, 10, 8),
                         GuestCount = 3,
                         RoomCount = 2,
-                        PromotionId = null,
+                        PromotionId = summer15.PromotionId,
+                        PromotionNameSnapshot = summer15.PromotionName,
+                        PromotionDiscountTypeSnapshot = summer15.DiscountType,
+                        PromotionDiscountValueSnapshot = summer15.DiscountValue,
                         ServicePackageId = familyPackage.ServicePackageId,
-                        DepositAmount = 500000m,
-                        RoomAmount = 2100000m,
+                        DepositAmount = 800000m,
+                        RoomAmount = 3900000m,
                         PackageAmount = 400000m,
-                        DiscountAmount = 0m,
+                        DiscountAmount = 300000m,
                         AdditionalServiceAmount = 0m,
-                        TotalAmount = 2500000m,
+                        TotalAmount = 4000000m,
                         Note = "Khách đặt 2 phòng cho gia đình.",
                         Status = BookingEnums.Confirmed
                     },
@@ -590,14 +604,17 @@ namespace HotelManagement.Data
                         ExpectedCheckOut = new DateTime(2026, 10, 17),
                         GuestCount = 2,
                         RoomCount = 1,
-                        PromotionId = vip20.PromotionId,
+                        PromotionId = summer15.PromotionId,
+                        PromotionNameSnapshot = summer15.PromotionName,
+                        PromotionDiscountTypeSnapshot = summer15.DiscountType,
+                        PromotionDiscountValueSnapshot = summer15.DiscountValue,
                         ServicePackageId = null,
-                        DepositAmount = 300000m,
+                        DepositAmount = 170000m,
                         RoomAmount = 1000000m,
                         PackageAmount = 0m,
-                        DiscountAmount = 200000m,
+                        DiscountAmount = 150000m,
                         AdditionalServiceAmount = 0m,
-                        TotalAmount = 800000m,
+                        TotalAmount = 850000m,
                         Note = "Khách đang chờ xác nhận.",
                         Status = BookingEnums.Pending
                     },
@@ -610,14 +627,17 @@ namespace HotelManagement.Data
                         ExpectedCheckOut = new DateTime(2026, 9, 23),
                         GuestCount = 4,
                         RoomCount = 1,
-                        PromotionId = null,
+                        PromotionId = summer15.PromotionId,
+                        PromotionNameSnapshot = summer15.PromotionName,
+                        PromotionDiscountTypeSnapshot = summer15.DiscountType,
+                        PromotionDiscountValueSnapshot = summer15.DiscountValue,
                         ServicePackageId = familyPackage.ServicePackageId,
                         DepositAmount = 500000m,
                         RoomAmount = 2400000m,
                         PackageAmount = 400000m,
-                        DiscountAmount = 0m,
-                        AdditionalServiceAmount = 300000m,
-                        TotalAmount = 3100000m,
+                        DiscountAmount = 300000m,
+                        AdditionalServiceAmount = 400000m,
+                        TotalAmount = 2900000m,
                         Note = "Khách đang lưu trú.",
                         Status = BookingEnums.CheckedIn
                     },
@@ -630,19 +650,27 @@ namespace HotelManagement.Data
                         ExpectedCheckOut = new DateTime(2026, 9, 27),
                         GuestCount = 2,
                         RoomCount = 1,
-                        PromotionId = null,
+                        PromotionId = summer15.PromotionId,
+                        PromotionNameSnapshot = summer15.PromotionName,
+                        PromotionDiscountTypeSnapshot = summer15.DiscountType,
+                        PromotionDiscountValueSnapshot = summer15.DiscountValue,
                         ServicePackageId = null,
-                        DepositAmount = 300000m,
-                        RoomAmount = 1000000m,
+                        DepositAmount = 420000m,
+                        RoomAmount = 2400000m,
                         PackageAmount = 0m,
-                        DiscountAmount = 0m,
+                        DiscountAmount = 300000m,
                         AdditionalServiceAmount = 0m,
-                        TotalAmount = 1000000m,
+                        TotalAmount = 2100000m,
                         Note = "Khách yêu cầu hủy đặt phòng.",
                         Status = BookingEnums.Cancelled
                     }
                 };
                 context.Bookings.AddRange(bookings);
+                context.SaveChanges();
+
+                welcome10.UsedCount = bookings.Count(b => b.PromotionId == welcome10.PromotionId);
+                summer15.UsedCount = bookings.Count(b => b.PromotionId == summer15.PromotionId);
+                vip20.UsedCount = bookings.Count(b => b.PromotionId == vip20.PromotionId);
                 context.SaveChanges();
             }
 // =============================================== BOOKING DETAILS ===============================================
@@ -927,7 +955,7 @@ namespace HotelManagement.Data
                     {
                         BookingId = bookingCompleted.BookingId,
                         SubTotal = 890000m,
-                        TaxAmount = 10m,
+                        TaxAmount = 83000m,
                         DiscountAmount = 60000m,
                         AmountDue = 913000m,
                         Status = InvoiceEnums.Paid,
@@ -938,19 +966,19 @@ namespace HotelManagement.Data
                     {
                         BookingId = bookingConfirmed.BookingId,
                         SubTotal = 4300000m,
-                        TaxAmount = 10m,
-                        DiscountAmount = 0m,
-                        AmountDue = 4730000m,
+                        TaxAmount = 400000m,
+                        DiscountAmount = 300000m,
+                        AmountDue = 4400000m,
                         Status = InvoiceEnums.PartiallyPaid,
                         CreatedByUserId = admin.UserId
                     },
                     new Invoice
                     {
                         BookingId = bookingCheckedIn.BookingId,
-                        SubTotal = 3400000m,
-                        TaxAmount = 10m,
-                        DiscountAmount = 0m,
-                        AmountDue = 3740000m,
+                        SubTotal = 3200000m,
+                        TaxAmount = 290000m,
+                        DiscountAmount = 300000m,
+                        AmountDue = 3190000m,
                         Status = InvoiceEnums.Unpaid,
                         CreatedByUserId = admin.UserId
                     }
@@ -1034,7 +1062,7 @@ namespace HotelManagement.Data
                     CancellationPolicyId = policy.CancellationPolicyId,
                     Reason = "Khách có việc đột xuất và yêu cầu hủy phòng.",
                     RefundPercentage = 70m,
-                    RefundAmount = 210000m,
+                    RefundAmount = 294000m,
                     Status = CancellationEnums.Approved
                 };
                 context.Cancellations.Add(cancellation);
@@ -1043,7 +1071,7 @@ namespace HotelManagement.Data
 // =============================================== REVIEWS ===============================================
             if (!context.Reviews.Any())
             {
-                var customerAn = context.Customers
+                var customer = context.Customers
                     .First(c => c.User!.Email == "an@gmail.com");
 
                 var bookingCompleted = context.Bookings
@@ -1054,11 +1082,14 @@ namespace HotelManagement.Data
                 var room101 = context.Rooms
                     .First(r => r.RoomName == "101");
 
+                var room102 = context.Rooms
+                    .First(r => r.RoomName == "102");
+
                 var reviews = new List<Review>
                 {
                     new Review
                     {
-                        CustomerId = customerAn.CustomerId,
+                        CustomerId = customer.CustomerId,
                         RoomId = room101.RoomId,
                         BookingId = bookingCompleted.BookingId,
                         Rating = 5,
@@ -1068,8 +1099,8 @@ namespace HotelManagement.Data
 
                     new Review
                     {
-                        CustomerId = customerAn.CustomerId,
-                        RoomId = room101.RoomId,
+                        CustomerId = customer.CustomerId,
+                        RoomId = room102.RoomId,
                         BookingId = bookingCompleted.BookingId,
                         Rating = 2,
                         Comment = "Một số thiết bị trong phòng cần được kiểm tra.",
@@ -1131,7 +1162,7 @@ namespace HotelManagement.Data
                     new AuditLog
                     {
                         UserId = admin.UserId,
-                        Action = "Đăng nhập",
+                        Action = AuditLogEnums.Login,
                         TableName = "Users",
                         RecordId = admin.UserId,
                         OldValue = null,
@@ -1140,7 +1171,7 @@ namespace HotelManagement.Data
                     new AuditLog
                     {
                         UserId = staff.UserId,
-                        Action = "Thêm",
+                        Action = AuditLogEnums.Create ,
                         TableName = "Bookings",
                         RecordId = 1,
                         OldValue = null,
@@ -1149,7 +1180,7 @@ namespace HotelManagement.Data
                     new AuditLog
                     {
                         UserId = staff.UserId,
-                        Action = "Sửa",
+                        Action = AuditLogEnums.Update,
                         TableName = "Bookings",
                         RecordId = 2,
                         OldValue = "{\"Status\":\"Pending\"}",
@@ -1158,7 +1189,7 @@ namespace HotelManagement.Data
                     new AuditLog
                     {
                         UserId = admin.UserId,
-                        Action = "Sửa",
+                        Action = AuditLogEnums.Update,
                         TableName = "Rooms",
                         RecordId = 3,
                         OldValue = "{\"Status\":\"Maintenance\"}",
@@ -1167,7 +1198,7 @@ namespace HotelManagement.Data
                     new AuditLog
                     {
                         UserId = staff.UserId,
-                        Action = "Xóa",
+                        Action = AuditLogEnums.SoftDelete,
                         TableName = "ServicePackages",
                         RecordId = 2,
                         OldValue = "{\"IsDeleted\":\"Active\"}",
@@ -1176,7 +1207,7 @@ namespace HotelManagement.Data
                     new AuditLog
                     {
                         UserId = admin.UserId,
-                        Action = "Đăng xuất",
+                        Action = AuditLogEnums.Logout,
                         TableName = "Users",
                         RecordId = admin.UserId,
                         OldValue = null,

@@ -10,10 +10,35 @@ namespace HotelManagement.Services
     {
         private readonly AppDbContext _context;
         private readonly CloudinaryService _cloudinaryService;
-        public RoomImageService(AppDbContext context, CloudinaryService cloudinaryService)
+        private readonly ILogger<RoomImageService> _logger;
+
+        public RoomImageService(
+            AppDbContext context,
+            CloudinaryService cloudinaryService,
+            ILogger<RoomImageService> logger)
         {
             _context = context;
             _cloudinaryService = cloudinaryService;
+            _logger = logger;
+        }
+
+        private async Task TryDeleteImageAsync(string? imageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(imageUrl))
+            {
+                return;
+            }
+
+            try
+            {
+                await _cloudinaryService.DeleteImageAsync(imageUrl);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "A room image asset could not be deleted from Cloudinary.");
+            }
         }
         // Chuyển RoomImage -> ResponseDto
         private RoomImageResponseDto MapToResponseDto(RoomImage roomImage)
@@ -90,6 +115,28 @@ namespace HotelManagement.Services
                                            .ToListAsync();
             return roomImages;
         }
+
+        public async Task<List<RoomImageResponseDto>> GetPublicAsync()
+        {
+            return await _context.RoomImages
+                .Where(image => image.Room != null && image.Room.IsDeleted == HotelManagement.Enums.ActiveEnums.Active)
+                .OrderBy(image => image.RoomId)
+                .ThenByDescending(image => image.IsPrimary)
+                .ThenBy(image => image.DisplayOrder)
+                .Select(image => new RoomImageResponseDto
+                {
+                    RoomImageId = image.RoomImageId,
+                    RoomId = image.RoomId,
+                    RoomName = image.Room!.RoomName,
+                    ImageUrl = image.ImageUrl,
+                    IsPrimary = image.IsPrimary,
+                    DisplayOrder = image.DisplayOrder,
+                    CreateAt = image.CreateAt,
+                    UpdateAt = image.UpdateAt
+                })
+                .ToListAsync();
+        }
+
         // Get by Id
         public async Task<RoomImageResponseDto?> GetByIdAsync(int id)
         {
@@ -109,8 +156,16 @@ namespace HotelManagement.Services
             // Upload ảnh lên Cloud
             var imageUrl = await _cloudinaryService.UploadImageAsync(dto.Image);
             var roomImage = MapToEntity(dto, imageUrl);
-            await _context.RoomImages.AddAsync(roomImage);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.RoomImages.AddAsync(roomImage);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                await TryDeleteImageAsync(imageUrl);
+                throw;
+            }
             return (await GetByIdAsync(roomImage.RoomImageId))!;
         }
         // Update
@@ -122,17 +177,23 @@ namespace HotelManagement.Services
             var oldImageUrl = roomImage.ImageUrl;
             if (dto.IsPrimary == 1)
                 await SetPrimaryImage(roomImage.RoomId, id);
-            // Url mới
+            // URL ảnh mới
             string? newImageUrl = null;
-            // Nếu cập nhật thành ảnh chính -> bỏ ảnh chính cũ
-            string? imageUrl = null;
             if (dto.Image != null && dto.Image.Length > 0)
-                imageUrl = await _cloudinaryService.UploadImageAsync(dto.Image);
+                newImageUrl = await _cloudinaryService.UploadImageAsync(dto.Image);
             UpdateEntity(roomImage, dto, newImageUrl);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                await TryDeleteImageAsync(newImageUrl);
+                throw;
+            }
             // Xóa ảnh cũ trên Cloud
             if (!string.IsNullOrWhiteSpace(newImageUrl) && !string.IsNullOrWhiteSpace(oldImageUrl))
-                await _cloudinaryService.DeleteImageAsync(oldImageUrl);
+                await TryDeleteImageAsync(oldImageUrl);
             return await GetByIdAsync(id);
         }
         // Delete
@@ -145,8 +206,7 @@ namespace HotelManagement.Services
             _context.RoomImages.Remove(roomImage);
             await _context.SaveChangesAsync();
             // 4. Xóa ảnh trên Cloudinary
-            if (!string.IsNullOrWhiteSpace(imageUrl))
-                await _cloudinaryService.DeleteImageAsync(imageUrl);
+            await TryDeleteImageAsync(imageUrl);
             return true;
         }
     }

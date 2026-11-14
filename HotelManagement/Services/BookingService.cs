@@ -15,10 +15,14 @@ namespace HotelManagement.Services
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
-        public BookingService(AppDbContext context, AuditLogService auditLogService)
+        private readonly PaymentService _paymentService;
+        private readonly IConfiguration _configuration;
+        public BookingService(AppDbContext context, AuditLogService auditLogService, PaymentService paymentService, IConfiguration configuration)
         {
             _context = context;
             _auditLogService = auditLogService;
+            _paymentService = paymentService;
+            _configuration = configuration;
         }
         // ===========================================================
         // =                        MAPPING                          =
@@ -43,8 +47,9 @@ namespace HotelManagement.Services
                 // Thông tin Promotion
                 PromotionId = booking.PromotionId,
                 PromotionCode = booking.Promotion?.PromotionCode,
-                PromotionName = booking.Promotion?.PromotionName,
-                DiscountValue = booking.Promotion?.DiscountValue,
+                PromotionName = booking.PromotionNameSnapshot ?? booking.Promotion?.PromotionName,
+                DiscountType = booking.PromotionDiscountTypeSnapshot ?? booking.Promotion?.DiscountType,
+                DiscountValue = booking.PromotionDiscountValueSnapshot ?? booking.Promotion?.DiscountValue,
                 // Thông tin ServicePackage
                 ServicePackageId = booking.ServicePackageId,
                 PackageName = booking.ServicePackage?.PackageName,
@@ -68,6 +73,7 @@ namespace HotelManagement.Services
                                             BookingId = bd.BookingId,
                                             RoomId = bd.RoomId,
                                             RoomName = bd.Room?.RoomName,
+                                            RoomTypeName = bd.Room?.RoomType?.RoomTypeName,
                                             ActualCheckIn = bd.ActualCheckIn,
                                             ActualCheckOut = bd.ActualCheckOut,
                                             PricePerNight = bd.PricePerNight,
@@ -168,7 +174,7 @@ namespace HotelManagement.Services
         {
             if (expectedCheckIn >= expectedCheckOut)
                 throw new BadRequestException("Ngày trả phòng phải sau ngày nhận phòng!");
-            if (expectedCheckIn < DateTime.Now)
+            if (expectedCheckIn < DateTime.UtcNow)
                 throw new BadRequestException("Ngày nhận phòng không được ở trong quá khứ!");
         }
         // ===========================================================
@@ -212,6 +218,7 @@ namespace HotelManagement.Services
                                               .Where(bd => bd.RoomId == roomId
                                                         && bd.Booking!.IsDeleted == ActiveEnums.Active
                                                         && bd.Booking!.Status != BookingEnums.Cancelled
+                                                        && bd.Booking.Status != BookingEnums.Rejected
                                                         && bd.Booking.ExpectedCheckIn < expectedCheckOut
                                                         && bd.Booking.ExpectedCheckOut > expectedCheckIn);
             // Nếu Update thì bỏ qua Booking hiện tại
@@ -225,21 +232,50 @@ namespace HotelManagement.Services
         // =                 CHECK VALID PROMOTION                   =
         // ===========================================================
         // Check Promotion hợp lệ hay không?
-        private async Task<Promotion?> CheckValidPromotion(int? promotionId)
+        private async Task<(Promotion? Promotion, decimal DiscountAmount)> SelectPromotionAsync(
+            int? requestedPromotionId,
+            IReadOnlyCollection<BookingDetail> bookingDetails,
+            DateTime expectedCheckIn,
+            DateTime expectedCheckOut,
+            int? existingPromotionId = null)
         {
-            if (promotionId == null) return null;
-            var now = DateTime.Now;
-            var promotion = await _context.Promotions
-                                          .FirstOrDefaultAsync(p => p.PromotionId == promotionId
-                                                                 && p.IsDeleted == ActiveEnums.Active
-                                                                 && p.StartDate <= now
-                                                                 && p.EndDate >= now);
-            if (promotion is null)
-                throw new BadRequestException("Mã khuyến mãi không tồn tại hoặc đã hết hạn!");
-            // Kiểm tra giới hạn sử dụng
-            if (promotion.UsageLimit.HasValue && (promotion.UsedCount ?? 0) >= promotion.UsageLimit.Value)
-                throw new BadRequestException("Mã khuyến mãi đã hết lượt sử dụng!");
-            return promotion;
+            var nowUtc = DateTime.UtcNow;
+            var candidates = await _context.Promotions
+                .Include(p => p.ApplyPromotions)
+                .Where(p => p.IsDeleted == ActiveEnums.Active
+                    && p.StartDate <= nowUtc && nowUtc < p.EndDate
+                    && (!p.UsageLimit.HasValue || (p.UsedCount ?? 0) < p.UsageLimit.Value
+                        || p.PromotionId == existingPromotionId)
+                    && (!requestedPromotionId.HasValue || p.PromotionId == requestedPromotionId.Value))
+                .ToListAsync();
+
+            if (requestedPromotionId.HasValue && candidates.Count == 0)
+                throw new BadRequestException("Khuyến mãi không tồn tại, chưa bắt đầu, đã hết hạn hoặc đã hết lượt sử dụng!");
+
+            var nightCount = (expectedCheckOut.Date - expectedCheckIn.Date).Days;
+            var applicable = candidates
+                .Select(promotion =>
+                {
+                    var roomTypeIds = promotion.ApplyPromotions.Select(ap => ap.RoomTypeId).ToHashSet();
+                    var eligibleRoomAmount = bookingDetails
+                        .Where(detail => detail.Room?.RoomTypeId is int roomTypeId && roomTypeIds.Contains(roomTypeId))
+                        .Sum(detail => detail.PricePerNight * nightCount);
+                    var discount = CalculateDiscountAmount(promotion, eligibleRoomAmount);
+                    return (Promotion: promotion, DiscountAmount: discount);
+                })
+                .Where(candidate => candidate.DiscountAmount > 0)
+                .OrderByDescending(candidate => candidate.DiscountAmount)
+                .ThenBy(candidate => candidate.Promotion.PromotionId)
+                .ToList();
+
+            if (requestedPromotionId.HasValue)
+            {
+                if (applicable.Count == 0)
+                    throw new BadRequestException("Khuyến mãi không áp dụng cho loại phòng đã chọn hoặc chưa đạt giá trị tối thiểu!");
+                return applicable[0];
+            }
+
+            return applicable.FirstOrDefault();
         }
         private void IncreasePromotionUsedCount( Promotion promotion)
         { 
@@ -291,20 +327,21 @@ namespace HotelManagement.Services
             return package.PackagePrice;
         }
         // Tính DiscountAmount
-        private decimal CalculateDisCountAmount(Promotion? promotion, decimal roomAmount, decimal packageAmount)
+        private decimal CalculateDiscountAmount(Promotion? promotion, decimal eligibleRoomAmount)
         {
             if (promotion is null || promotion.DiscountValue is null) return 0;
-            var amountBeforeDiscount = roomAmount + packageAmount;
             // Check giá trị tối thiểu được giảm
-            if (promotion.MinAmount.HasValue && amountBeforeDiscount < promotion.MinAmount.Value)
+            if (promotion.MinAmount.HasValue && eligibleRoomAmount < promotion.MinAmount.Value)
                 return 0;
             // Tính tiền giảm
-            var discountValue = promotion.DiscountValue ?? 0;
-            var amountAfterDiscount = amountBeforeDiscount * discountValue / 100;
+            var discountValue = promotion.DiscountValue.Value;
+            var amountAfterDiscount = promotion.DiscountType == PromotionDiscountTypeEnums.FixedAmount
+                ? discountValue
+                : eligibleRoomAmount * discountValue / 100;
             // Check tiền giảm vượt giới hạn giảm không?
             if (promotion.MaxDisCountAmount.HasValue && amountAfterDiscount > promotion.MaxDisCountAmount.Value)
                 amountAfterDiscount = promotion.MaxDisCountAmount.Value;
-            return amountAfterDiscount;
+            return Math.Round(Math.Clamp(amountAfterDiscount, 0, eligibleRoomAmount), 2, MidpointRounding.AwayFromZero);
         }
         // Tính TotalAmount
         private decimal CalculateTotalAmount(decimal roomAmount, decimal packageAmount, decimal additionalServiceAmount, decimal discountAmount)
@@ -317,48 +354,78 @@ namespace HotelManagement.Services
         // =                           CRUD                          =
         // ===========================================================
         // Get all (Lấy danh sách booking đang hoạt động)
+
         public async Task<List<BookingResponseDto>> GetAllAsync()
         {
-            var bookings = await _context.Bookings.Where(b => b.IsDeleted == ActiveEnums.Active)
-                                        .OrderByDescending(b => b.BookingDate)
-                                        .Select(b => new BookingResponseDto
-                                        {
-                                            BookingId = b.BookingId,
-                                            // Thông tin Customer
-                                            CustomerId = b.CustomerId,
-                                            FullName = b.Customer!.User!.FullName,
-                                            Email = b.Customer!.User!.Email,
-                                            PhoneNumber = b.Customer!.User!.PhoneNumber,
-                                            // Thông tin Booking
-                                            BookingDate = b.BookingDate,
-                                            ExpectedCheckIn = b.ExpectedCheckIn,
-                                            ExpectedCheckOut = b.ExpectedCheckOut,
-                                            GuestCount = b.GuestCount,
-                                            RoomCount = b.RoomCount,
-                                            // Thông tin Promotion
-                                            PromotionId = b.PromotionId,
-                                            PromotionCode = b.Promotion != null ? b.Promotion.PromotionCode : null,
-                                            PromotionName = b.Promotion != null ? b.Promotion.PromotionName : null,
-                                            DiscountValue = b.Promotion != null ? b.Promotion.DiscountValue : null,
+            var bookings = await _context.Bookings
+                .Where(b => b.IsDeleted == ActiveEnums.Active)
+                .OrderByDescending(b => b.BookingDate)
+                .Select(b => new BookingResponseDto
+                {
+                    BookingId = b.BookingId,
+                    // Thông tin Customer
+                    CustomerId = b.CustomerId,
+                    FullName = b.Customer!.User!.FullName,
+                    Email = b.Customer!.User!.Email,
+                    PhoneNumber = b.Customer!.User!.PhoneNumber,
+                    // Thông tin Booking
+                    BookingDate = b.BookingDate,
+                    ExpectedCheckIn = b.ExpectedCheckIn,
+                    ExpectedCheckOut = b.ExpectedCheckOut,
+                    GuestCount = b.GuestCount,
+                    RoomCount = b.RoomCount,
+                    // Thông tin Promotion
+                    PromotionId = b.PromotionId,
+                    PromotionCode = b.Promotion != null
+                        ? b.Promotion.PromotionCode
+                        : null,
+                    PromotionName = b.PromotionNameSnapshot ?? (b.Promotion != null ? b.Promotion.PromotionName : null),
+                    DiscountType = b.PromotionDiscountTypeSnapshot ?? (b.Promotion != null ? b.Promotion.DiscountType : null),
+                    DiscountValue = b.PromotionDiscountValueSnapshot ?? (b.Promotion != null ? b.Promotion.DiscountValue : null),
+                    // Thông tin ServicePackage
+                    ServicePackageId = b.ServicePackageId,
+                    PackageName = b.ServicePackage != null
+                        ? b.ServicePackage.PackageName
+                        : null,
+                    // Thông tin tiền
+                    DepositAmount = b.DepositAmount,
+                    RoomAmount = b.RoomAmount,
+                    PackageAmount = b.PackageAmount,
+                    DiscountAmount = b.DiscountAmount,
+                    AdditionalServiceAmount = b.AdditionalServiceAmount,
+                    TotalAmount = b.TotalAmount,
+                    Note = b.Note,
+                    Status = b.Status,
+                    IsDeleted = b.IsDeleted,
+                    CreateAt = b.CreateAt,
+                    UpdateAt = b.UpdateAt,
+                    // Booking Details
+                    BookingDetails = b.BookingDetails
+                        .Select(bd => new BookingDetailResponseDto
+                        {
+                            BookingDetailId = bd.BookingDetailId,
+                            BookingId = bd.BookingId,
+                            RoomId = bd.RoomId,
+                            RoomName = bd.Room != null
+                                ? bd.Room.RoomName
+                                : null,
+                            RoomTypeName = bd.Room != null && bd.Room.RoomType != null
+                                ? bd.Room.RoomType.RoomTypeName
+                                : null,
+                            ActualCheckIn = bd.ActualCheckIn,
+                            ActualCheckOut = bd.ActualCheckOut,
+                            PricePerNight = bd.PricePerNight,
+                            TotalAmount = bd.TotalAmount,
+                            GuestCount = bd.GuestCount,
+                            CreateAt = bd.CreateAt
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
 
-                                            // Thông tin ServicePackage
-                                            ServicePackageId = b.ServicePackageId,
-                                            PackageName = b.ServicePackage != null ? b.ServicePackage.PackageName : null,
-                                            // Thông tin tiền
-                                            DepositAmount = b.DepositAmount,
-                                            RoomAmount = b.RoomAmount,
-                                            PackageAmount = b.PackageAmount,
-                                            DiscountAmount = b.DiscountAmount,
-                                            AdditionalServiceAmount = b.AdditionalServiceAmount,
-                                            TotalAmount = b.TotalAmount,
-                                            Note = b.Note,
-                                            Status = b.Status,
-                                            IsDeleted = b.IsDeleted,
-                                            CreateAt = b.CreateAt,
-                                            UpdateAt = b.UpdateAt
-                                        }).ToListAsync();
             return bookings;
         }
+
         // Get deleted (Lấy danh sách booking không hoạt động)
         public async Task<List<BookingResponseDto>> GetDeletedAsync()
         {
@@ -381,8 +448,9 @@ namespace HotelManagement.Services
                                             // Thông tin Promotion
                                             PromotionId = b.PromotionId,
                                             PromotionCode = b.Promotion != null ? b.Promotion.PromotionCode : null,
-                                            PromotionName = b.Promotion != null ? b.Promotion.PromotionName : null,
-                                            DiscountValue = b.Promotion != null ? b.Promotion.DiscountValue : null,
+                                            PromotionName = b.PromotionNameSnapshot ?? (b.Promotion != null ? b.Promotion.PromotionName : null),
+                                            DiscountType = b.PromotionDiscountTypeSnapshot ?? (b.Promotion != null ? b.Promotion.DiscountType : null),
+                                            DiscountValue = b.PromotionDiscountValueSnapshot ?? (b.Promotion != null ? b.Promotion.DiscountValue : null),
 
                                             // Thông tin ServicePackage
                                             ServicePackageId = b.ServicePackageId,
@@ -408,6 +476,11 @@ namespace HotelManagement.Services
             var booking = await _context.Bookings.Include(b => b.Customer).ThenInclude(c => c!.User)
                                                  .Include(b => b.Promotion)
                                                  .Include(b => b.ServicePackage)
+                                                 .Include(b => b.BookingDetails)
+                                                    .ThenInclude(bd => bd.Room)
+                                                        .ThenInclude(room => room!.RoomType)
+                                                 .Include(b => b.BookingServices)
+                                                    .ThenInclude(bs => bs.Service)
                                                  .FirstOrDefaultAsync(b => b.BookingId == id
                                                                         && b.IsDeleted == ActiveEnums.Active);
             if (booking is null) return null;
@@ -425,6 +498,7 @@ namespace HotelManagement.Services
                                          .Include(b => b.ServicePackage)
                                          .Include(b => b.BookingDetails)
                                             .ThenInclude(bd => bd.Room)
+                                                .ThenInclude(room => room!.RoomType)
                                          .Include(b => b.BookingServices)
                                             .ThenInclude(bs => bs.Service)
                                          .OrderByDescending(b => b.BookingDate)
@@ -444,6 +518,7 @@ namespace HotelManagement.Services
                                         .Include(b => b.ServicePackage)
                                         .Include(b => b.BookingDetails)
                                             .ThenInclude(bd => bd.Room)
+                                                .ThenInclude(room => room!.RoomType)
                                         .Include(b => b.BookingServices)
                                             .ThenInclude(bs => bs.Service)
                                         .FirstOrDefaultAsync();
@@ -459,8 +534,6 @@ namespace HotelManagement.Services
             {
                 // Check đầu vào
                 await CheckCustomerId(dto.CustomerId);
-                await CheckPromotionId(dto.PromotionId);
-                var promotion = await CheckValidPromotion(dto.PromotionId);
                 await CheckServicePackageId(dto.ServicePackageId);
                 CheckDate(dto.ExpectedCheckIn, dto.ExpectedCheckOut);
                 await CheckBookingDetails(dto.BookingDetails, dto.RoomCount, dto.GuestCount);
@@ -485,12 +558,17 @@ namespace HotelManagement.Services
                 await _context.SaveChangesAsync();
                 var listBookingDetails = await _context.BookingDetails
                                                        .Where(bd => bd.BookingId == booking.BookingId)
+                                                       .Include(bd => bd.Room)
                                                        .ToListAsync();
                 var roomAmount = CalculateRoomAmount(listBookingDetails, dto.ExpectedCheckIn, dto.ExpectedCheckOut);
+                var (promotion, discountAmount) = await SelectPromotionAsync(
+                    dto.PromotionId, listBookingDetails, dto.ExpectedCheckIn, dto.ExpectedCheckOut);
+                booking.PromotionId = promotion?.PromotionId;
+                booking.PromotionNameSnapshot = promotion?.PromotionName;
+                booking.PromotionDiscountTypeSnapshot = promotion?.DiscountType;
+                booking.PromotionDiscountValueSnapshot = promotion?.DiscountValue;
                 // Tính tiền ServicePackage
                 var packageAmount = await CalculatePackageAmount(dto.ServicePackageId);
-                // Tính tiền giảm
-                var discountAmount = CalculateDisCountAmount(promotion, roomAmount, packageAmount);
                 // Tiền dịch vụ đặt thêm ban đầu = 0
                 var additionalServiceAmount = 0m;
                 // Tính tổng tiền
@@ -529,8 +607,6 @@ namespace HotelManagement.Services
             try
             {
                 // Check đầu vào
-                await CheckPromotionId(dto.PromotionId);
-                var promotion = await CheckValidPromotion(dto.PromotionId);
                 await CheckServicePackageId(dto.ServicePackageId);
                 CheckDate(dto.ExpectedCheckIn, dto.ExpectedCheckOut);
                 await CheckBookingDetails(dto.BookingDetails, dto.RoomCount, dto.GuestCount);
@@ -555,12 +631,17 @@ namespace HotelManagement.Services
                 await _context.SaveChangesAsync();
                 var listBookingDetails = await _context.BookingDetails
                                                        .Where(bd => bd.BookingId == booking.BookingId)
+                                                       .Include(bd => bd.Room)
                                                        .ToListAsync();
                 var roomAmount = CalculateRoomAmount(listBookingDetails, dto.ExpectedCheckIn, dto.ExpectedCheckOut);
+                var (promotion, discountAmount) = await SelectPromotionAsync(
+                    dto.PromotionId, listBookingDetails, dto.ExpectedCheckIn, dto.ExpectedCheckOut);
+                booking.PromotionId = promotion?.PromotionId;
+                booking.PromotionNameSnapshot = promotion?.PromotionName;
+                booking.PromotionDiscountTypeSnapshot = promotion?.DiscountType;
+                booking.PromotionDiscountValueSnapshot = promotion?.DiscountValue;
                 // Tính tiền ServicePackage
                 var packageAmount = await CalculatePackageAmount(dto.ServicePackageId);
-                // Tính tiền giảm
-                var discountAmount = CalculateDisCountAmount(promotion, roomAmount, packageAmount);
                 // Tiền dịch vụ đặt thêm ban đầu = 0
                 var additionalServiceAmount = 0m;
                 // Tính tổng tiền
@@ -571,10 +652,16 @@ namespace HotelManagement.Services
                 booking.DiscountAmount = discountAmount;
                 booking.AdditionalServiceAmount = additionalServiceAmount;
                 booking.TotalAmount = totalAmount;
+                var depositPercentage = _configuration.GetValue<decimal>("BookingSettings:DepositPercentage", 20m);
+                if (depositPercentage <= 0 || depositPercentage > 100)
+                    throw new BadRequestException("BookingSettings:DepositPercentage phải nằm trong khoảng lớn hơn 0 đến 100!");
+                booking.DepositAmount = Math.Round(totalAmount * depositPercentage / 100m, 2, MidpointRounding.AwayFromZero);
                 // Tăng UsedCount
                 if (promotion is not null)
                     IncreasePromotionUsedCount(promotion);
                 await _context.SaveChangesAsync();
+                if (booking.DepositAmount > 0)
+                    await _paymentService.CreateDepositAsync(booking, booking.DepositAmount);
                 await _auditLogService.LogAsync(AuditLogEnums.Create,
                                                 "Booking",
                                                 booking.BookingId,
@@ -604,6 +691,9 @@ namespace HotelManagement.Services
                 // Chỉ cho phép sửa các Booking đang Pending
                 if (booking.Status != BookingEnums.Pending) 
                     throw new BadRequestException("Chỉ có thể cập nhật Booking đang ở trạng thái Pending!"); 
+                if (await _context.Payments.AnyAsync(p => p.Status == PaymentEnums.Success &&
+                    (p.BookingId == booking.BookingId || p.Invoice!.BookingId == booking.BookingId)))
+                    throw new BadRequestException("Không thể thay đổi chi phí đặt phòng sau khi đã thu tiền cọc!");
                 // Không cho update Booking đã hủy đặt phòng
                 if (booking.Status == BookingEnums.Cancelled)
                     throw new BadRequestException("Không thể cập nhật Booking đã hủy!");
@@ -611,7 +701,6 @@ namespace HotelManagement.Services
                 var oldPromotionId = booking.PromotionId;
                 // Validate
                 await CheckPromotionId(dto.PromotionId);
-                var newPromotion = await CheckValidPromotion(dto.PromotionId);
                 await CheckServicePackageId(dto.ServicePackageId);
                 CheckDate(dto.ExpectedCheckIn, dto.ExpectedCheckOut);
                 // Kiểm tra số lượng phòng
@@ -631,12 +720,13 @@ namespace HotelManagement.Services
                 // Tính RoomAmount
                 var listBookingDetails = await _context.BookingDetails
                                                        .Where(bd => bd.BookingId == booking.BookingId)
+                                                       .Include(bd => bd.Room)
                                                        .ToListAsync();
                 var roomAmount = CalculateRoomAmount(listBookingDetails, dto.ExpectedCheckIn, dto.ExpectedCheckOut);
+                var (newPromotion, discountAmount) = await SelectPromotionAsync(
+                    dto.PromotionId, listBookingDetails, dto.ExpectedCheckIn, dto.ExpectedCheckOut, oldPromotionId);
                 // Tính tiền ServicePackage
                 var packageAmount = await CalculatePackageAmount(dto.ServicePackageId);
-                // Tính tiền giảm
-                var discountAmount = CalculateDisCountAmount(newPromotion, roomAmount, packageAmount);
                 // Tiền dịch vụ đặt thêm ban đầu = 0
                 var additionalServiceAmount = booking.AdditionalServiceAmount;
                 // Tính tổng tiền
@@ -647,8 +737,16 @@ namespace HotelManagement.Services
                 booking.DiscountAmount = discountAmount;
                 booking.AdditionalServiceAmount = additionalServiceAmount;
                 booking.TotalAmount = totalAmount;
+                var depositPercentage = _configuration.GetValue<decimal>("BookingSettings:DepositPercentage", 20m);
+                if (depositPercentage <= 0 || depositPercentage > 100)
+                    throw new BadRequestException("BookingSettings:DepositPercentage phải nằm trong khoảng lớn hơn 0 đến 100!");
+                booking.DepositAmount = Math.Round(totalAmount * depositPercentage / 100m, 2, MidpointRounding.AwayFromZero);
                 // Xử lý UsedCount của Promotion
-                if (oldPromotionId != dto.PromotionId)
+                booking.PromotionId = newPromotion?.PromotionId;
+                booking.PromotionNameSnapshot = newPromotion?.PromotionName;
+                booking.PromotionDiscountTypeSnapshot = newPromotion?.DiscountType;
+                booking.PromotionDiscountValueSnapshot = newPromotion?.DiscountValue;
+                if (oldPromotionId != booking.PromotionId)
                 {
                     if (oldPromotionId.HasValue)
                     {
@@ -672,7 +770,12 @@ namespace HotelManagement.Services
                                $"ServicePackageId: {booking.ServicePackageId}, " +
                                $"TotalAmount: {booking.TotalAmount}";
                 UpdateEntity(booking, dto);
+                booking.PromotionId = newPromotion?.PromotionId;
+                booking.PromotionNameSnapshot = newPromotion?.PromotionName;
+                booking.PromotionDiscountTypeSnapshot = newPromotion?.DiscountType;
+                booking.PromotionDiscountValueSnapshot = newPromotion?.DiscountValue;
                 await _context.SaveChangesAsync();
+                await _paymentService.RefreshPendingDepositAsync(booking.BookingId, booking.DepositAmount);
                 var newValue = $"ExpectedCheckIn: {booking.ExpectedCheckIn}, " +
                                $"ExpectedCheckOut: {booking.ExpectedCheckOut}, " +
                                $"GuestCount: {booking.GuestCount}, " +
@@ -728,6 +831,9 @@ namespace HotelManagement.Services
                 var hasInvoice = await _context.Invoices.AnyAsync(i => i.BookingId == id);
                 if (hasInvoice)
                     throw new BadRequestException("Không thể xóa Booking vì Booking đã phát sinh hóa đơn!");
+                var hasPayments = await _context.Payments.AnyAsync(p => p.BookingId == id || p.Invoice!.BookingId == id);
+                if (hasPayments)
+                    throw new BadRequestException("Không thể xóa Booking vì Booking đã có lịch sử thanh toán hoặc hoàn tiền!");
                 // Không cho xóa nếu Booking đã có Cancellation
                 var hasCancellation = await _context.Cancellations.AnyAsync(c => c.BookingId == id);
                 if (hasCancellation)
@@ -757,7 +863,8 @@ namespace HotelManagement.Services
             var bookings = await _context.Bookings
                                          .Where(b => b.IsDeleted == ActiveEnums.Active
                                                      && b.ExpectedCheckOut < now
-                                                     && b.Status != BookingEnums.Cancelled)
+                                                     && b.Status != BookingEnums.Cancelled
+                                                     && b.Status != BookingEnums.Rejected)
                                          .ToListAsync();
             if (!bookings.Any()) return 0;
             foreach (var booking in bookings)
@@ -832,6 +939,25 @@ namespace HotelManagement.Services
                                             "Status: Pending",
                                             "Status: Confirmed");
             return await GetByIdAsync(id);
+        }
+
+        public async Task<bool> RejectAsync(int id)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == id && b.IsDeleted == ActiveEnums.Active);
+            if (booking is null) return false;
+            if (booking.Status != BookingEnums.Pending)
+                throw new BadRequestException("Chỉ có thể từ chối đặt phòng đang chờ xử lý!");
+            booking.Status = BookingEnums.Rejected;
+            booking.UpdateAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+            await _paymentService.CancelPendingPaymentsAsync(booking.BookingId);
+            await _paymentService.CreateRefundAsync(booking.BookingId, booking.DepositAmount,
+                $"booking:{booking.BookingId}:rejection-refund", "BookingRejected");
+            await _auditLogService.LogAsync(AuditLogEnums.Update, "Booking", booking.BookingId,
+                "Status: Pending", "Status: Rejected");
+            await transaction.CommitAsync();
+            return true;
         }
     }
 }

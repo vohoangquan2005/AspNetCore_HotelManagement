@@ -22,10 +22,14 @@ namespace HotelManagement.Services
         private readonly JwtSettings _jwtSettings;
         private readonly IConfiguration _configuration;
         private readonly AuditLogService _auditLogService;
+        private readonly CloudinaryService _cloudinaryService;
+        private readonly ILogger<AuthService> _logger;
         public AuthService(AppDbContext context,
                             PasswordHasher<User> passwordHasher,
                             IConfiguration configuration,
                             AuditLogService auditLogService,
+                            CloudinaryService cloudinaryService,
+                            ILogger<AuthService> logger,
                             IOptions<JwtSettings>? jwtOptions = null)
         {
             _context = context;
@@ -34,6 +38,8 @@ namespace HotelManagement.Services
             _jwtSettings = jwtOptions?.Value ?? _configuration.GetSection("JwtSettings").Get<JwtSettings>() 
                                              ?? new JwtSettings();
             _auditLogService = auditLogService;
+            _cloudinaryService = cloudinaryService;
+            _logger = logger;
         }
         // ===========================================================
         // =                      TOKEN GENERATION                   =
@@ -378,6 +384,97 @@ namespace HotelManagement.Services
             {
                 await transaction.RollbackAsync();
                 throw;
+            }
+        }
+
+        public async Task<UserProfileResponseDto> UpdateMyProfileAsync(int userId, UpdateMyProfileDto dto)
+        {
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.Customer)
+                .FirstOrDefaultAsync(u => u.UserId == userId && u.IsDeleted == ActiveEnums.Active);
+
+            if (user is null)
+                throw new NotFoundException("Người dùng không tồn tại hoặc đã bị vô hiệu hóa!");
+            if (user.IsLocked == ActiveEnums.Inactive)
+                throw new BadRequestException("Tài khoản đã bị khóa!");
+
+            var fullName = dto.FullName.Trim();
+            var email = dto.Email.Trim().ToLowerInvariant();
+            var phoneNumber = dto.PhoneNumber.Trim();
+
+            if (string.IsNullOrWhiteSpace(fullName))
+                throw new BadRequestException("Họ tên không được để trống!");
+            if (!Regex.IsMatch(phoneNumber, @"^0\d{9}$"))
+                throw new BadRequestException("Số điện thoại phải gồm 10 chữ số và bắt đầu bằng số 0!");
+            if (dto.DateOfBirth.HasValue && dto.DateOfBirth.Value.Date > DateTime.Today)
+                throw new BadRequestException("Ngày sinh không được lớn hơn ngày hiện tại!");
+
+            if (await _context.Users.AnyAsync(u => u.UserId != userId
+                && u.Email != null && u.Email.ToLower() == email))
+                throw new ConflictException("Email đã được sử dụng bởi tài khoản khác!");
+            if (await _context.Users.AnyAsync(u => u.UserId != userId
+                && u.PhoneNumber == phoneNumber))
+                throw new ConflictException("Số điện thoại đã được sử dụng bởi tài khoản khác!");
+
+            var oldAvatar = user.Avatar;
+            string? uploadedAvatar = null;
+            if (dto.Avatar is { Length: > 0 })
+            {
+                uploadedAvatar = await _cloudinaryService.UploadImageAsync(
+                    dto.Avatar,
+                    CloudinaryService.UserAvatarFolder);
+            }
+
+            var oldValue = $"FullName: {user.FullName}, Email: {user.Email}, PhoneNumber: {user.PhoneNumber}, DateOfBirth: {user.DateOfBirth}, Avatar: {user.Avatar}";
+            try
+            {
+                user.FullName = fullName;
+                user.Email = email;
+                user.PhoneNumber = phoneNumber;
+                user.DateOfBirth = dto.DateOfBirth;
+                if (uploadedAvatar is not null)
+                    user.Avatar = uploadedAvatar;
+                user.UpdateAt = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                await TryDeleteAvatarAsync(uploadedAvatar);
+                throw;
+            }
+
+            try
+            {
+                await _auditLogService.LogAsync(
+                    AuditLogEnums.Update,
+                    "Users",
+                    user.UserId,
+                    oldValue,
+                    $"FullName: {user.FullName}, Email: {user.Email}, PhoneNumber: {user.PhoneNumber}, DateOfBirth: {user.DateOfBirth}, Avatar: {user.Avatar}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Audit log failed after profile update for userId {UserId}", userId);
+            }
+
+            if (uploadedAvatar is not null && !string.Equals(oldAvatar, uploadedAvatar, StringComparison.Ordinal))
+                await TryDeleteAvatarAsync(oldAvatar);
+
+            return await GetProfileAsync(userId);
+        }
+
+        private async Task TryDeleteAvatarAsync(string? avatarUrl)
+        {
+            if (string.IsNullOrWhiteSpace(avatarUrl)) return;
+            try
+            {
+                await _cloudinaryService.DeleteImageAsync(avatarUrl, CloudinaryService.UserAvatarFolder);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "Could not clean up profile avatar {AvatarUrl}.", avatarUrl);
             }
         }
     }

@@ -50,12 +50,14 @@ namespace HotelManagement.Services
                                               .CountAsync(b => b.IsDeleted == ActiveEnums.Active
                                                             && b.ExpectedCheckIn >= startOfToday
                                                             && b.ExpectedCheckIn < endOfToday
-                                                            && b.Status != BookingEnums.Cancelled);
+                                                            && b.Status != BookingEnums.Cancelled
+                                                            && b.Status != BookingEnums.Rejected);
             var todayCheckOuts = await _context.Bookings
                                                .CountAsync(b => b.IsDeleted == ActiveEnums.Active
                                                              && b.ExpectedCheckOut >= startOfToday
                                                              && b.ExpectedCheckOut < endOfToday
-                                                             && b.Status != BookingEnums.Cancelled);
+                                                             && b.Status != BookingEnums.Cancelled
+                                                             && b.Status != BookingEnums.Rejected);
             // SERVICE
             var totalServices = await _context.Services.CountAsync(s => s.IsDeleted == ActiveEnums.Active);
             var serviceUsagesThisMonth = await _context.BookingServices

@@ -1,98 +1,187 @@
-﻿using CloudinaryDotNet;
+using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using HotelManagement.Exceptions;
+using HotelManagement.Settings;
+using Microsoft.Extensions.Options;
+using System.Text.RegularExpressions;
 
 namespace HotelManagement.Services
 {
     public class CloudinaryService
     {
+        public const string UserAvatarFolder = "hotel-management/avatars";
+
         private readonly Cloudinary _cloudinary;
-        public CloudinaryService(Cloudinary cloudinary)
+        private readonly string _cloudName;
+
+        private static readonly string[] AllowedImageTypes =
+        {
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+        };
+
+        private static readonly string[] AllowedImageExtensions =
+        {
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp"
+        };
+
+        private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
+
+        public CloudinaryService(
+            Cloudinary cloudinary,
+            IOptions<CloudinarySetting> cloudinarySettings)
         {
             _cloudinary = cloudinary;
+            _cloudName = cloudinarySettings.Value.CloudName;
         }
-        private static readonly string[] AllowedImageTypes = {
-                                                                "image/jpeg",
-                                                                "image/png",
-                                                                "image/webp"
-                                                             };
-        private static readonly string[] AllowedImageExtensions = {
-                                                                    ".jpg",
-                                                                    ".jpeg",
-                                                                    ".png",
-                                                                    ".webp"
-                                                                  };
-        private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
-        // Check Image
+
         private void ValidateImage(IFormFile file)
         {
-            if (file == null || file.Length == 0) throw new BadRequestException("Vui lòng chọn hình ảnh!");// Kiểm tra dung lượng
+            if (file == null || file.Length == 0)
+            {
+                throw new BadRequestException("Vui lòng chọn hình ảnh!");
+            }
+
             if (file.Length > MaxFileSize)
+            {
                 throw new BadRequestException("Kích thước hình ảnh không được vượt quá 5MB!");
-            // Kiểm tra Content-Type
-            if (!AllowedImageTypes.Contains(file.ContentType.ToLower()))
-                throw new BadRequestException("Chỉ được phép upload ảnh JPG, JPEG, PNG hoặc WEBP!");
-            // Kiểm tra extension
-            var extension = Path.GetExtension(file.FileName).ToLower();
+            }
+
+            if (!AllowedImageTypes.Contains(file.ContentType.ToLowerInvariant()))
+            {
+                throw new BadRequestException(
+                    "Chỉ được phép upload ảnh JPG, JPEG, PNG hoặc WEBP!");
+            }
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!AllowedImageExtensions.Contains(extension))
+            {
                 throw new BadRequestException("Định dạng hình ảnh không hợp lệ!");
+            }
         }
-        // ===========================================================
-        // =                      UPLOAD IMAGE                       =
-        // ===========================================================
-        public async Task<string> UploadImageAsync(IFormFile file)
+
+        public async Task<string> UploadImageAsync(IFormFile file, string? folder = null)
         {
-            // Kiểm tra file
             ValidateImage(file);
+
             using var stream = file.OpenReadStream();
-            var uploadParams = new ImageUploadParams    // Upload ảnh và trả về URL HTTPS của asset
+            var uploadParams = new ImageUploadParams
             {
                 File = new FileDescription(file.FileName, stream)
             };
+
+            if (!string.IsNullOrWhiteSpace(folder))
+            {
+                uploadParams.Folder = folder;
+                uploadParams.PublicId = Guid.NewGuid().ToString("N");
+            }
+
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
             if (uploadResult.Error != null)
+            {
                 throw new BadRequestException(uploadResult.Error.Message);
-            return uploadResult.SecureUrl.ToString();
+            }
+
+            var secureUrl = uploadResult.SecureUrl?.ToString();
+            if (string.IsNullOrWhiteSpace(secureUrl)
+                || !Uri.TryCreate(secureUrl, UriKind.Absolute, out var uri)
+                || uri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new BadRequestException("Cloudinary không trả về URL HTTPS hợp lệ!");
+            }
+
+            return secureUrl;
         }
-        // ===========================================================
-        // =                      DELETE IMAGE                       =
-        // ===========================================================
-        public async Task DeleteImageAsync(string? imageUrl)
+
+        public Task DeleteImageAsync(string? imageUrl)
         {
-            if (string.IsNullOrWhiteSpace(imageUrl))
+            return DeleteImageAsync(imageUrl, requiredFolder: null);
+        }
+
+        public async Task DeleteImageAsync(string? imageUrl, string? requiredFolder)
+        {
+            if (!TryGetManagedPublicId(imageUrl, requiredFolder, out var publicId))
+            {
                 return;
-            try
+            }
+
+            var result = await _cloudinary.DestroyAsync(new DeletionParams(publicId));
+            if (result.Error != null)
             {
-                var uri = new Uri(imageUrl);
-                var path = uri.AbsolutePath;
-                // Tìm phần /upload/
-                const string uploadFolder = "/upload/";
-                var uploadIndex = path.IndexOf(uploadFolder);
-                if (uploadIndex == -1)
-                    return;
-                // Lấy phần sau /upload/
-                var publicIdWithExtension =
-                    path.Substring(uploadIndex + uploadFolder.Length);
-                // Bỏ version nếu có
-                if (publicIdWithExtension.StartsWith("v"))
+                throw new BadRequestException(result.Error.Message);
+            }
+        }
+
+        private bool TryGetManagedPublicId(
+            string? imageUrl,
+            string? requiredFolder,
+            out string publicId)
+        {
+            publicId = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(imageUrl)
+                || !Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
+                || uri.Scheme != Uri.UriSchemeHttps
+                || !string.Equals(uri.Host, "res.cloudinary.com", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var segments = uri.AbsolutePath
+                .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .Select(Uri.UnescapeDataString)
+                .ToArray();
+
+            if (segments.Length < 5
+                || !string.Equals(segments[0], _cloudName, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(segments[1], "image", StringComparison.Ordinal)
+                || !string.Equals(segments[2], "upload", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var versionIndex = Array.FindIndex(
+                segments,
+                3,
+                segment => Regex.IsMatch(segment, "^v[0-9]+$", RegexOptions.CultureInvariant));
+
+            if (versionIndex < 0 || versionIndex + 1 >= segments.Length)
+            {
+                return false;
+            }
+
+            var publicIdSegments = segments[(versionIndex + 1)..];
+            var lastSegment = publicIdSegments[^1];
+            var extension = Path.GetExtension(lastSegment);
+
+            if (!AllowedImageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            publicIdSegments[^1] = Path.GetFileNameWithoutExtension(lastSegment);
+            publicId = string.Join("/", publicIdSegments);
+
+            if (string.IsNullOrWhiteSpace(publicId))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(requiredFolder))
+            {
+                var folderPrefix = requiredFolder.TrimEnd('/') + "/";
+                if (!publicId.StartsWith(folderPrefix, StringComparison.Ordinal))
                 {
-                    var slashIndex = publicIdWithExtension.IndexOf('/');
-                    if (slashIndex != -1)
-                        publicIdWithExtension = publicIdWithExtension.Substring(slashIndex + 1);
+                    publicId = string.Empty;
+                    return false;
                 }
-                // Bỏ extension .jpg / .png / .webp
-                var publicId = Path.ChangeExtension( publicIdWithExtension, null);
-                if (string.IsNullOrWhiteSpace(publicId))
-                    return;
-                var deleteParams = new DeletionParams(publicId);
-                var result = await _cloudinary.DestroyAsync( deleteParams);
-                if (result.Error != null)
-                    throw new BadRequestException(result.Error.Message);
             }
-            catch (UriFormatException)
-            {
-                throw new BadRequestException("URL hình ảnh Cloudinary không hợp lệ!");
-            }
+
+            return true;
         }
     }
 }

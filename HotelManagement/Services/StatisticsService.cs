@@ -23,13 +23,14 @@ namespace HotelManagement.Services
             var startDate = date.Date;
             var endDate = startDate.AddDays(1);
             var payments = await _context.Payments
-                                         .Where(p => p.CreateAt >= startDate
-                                                  && p.CreateAt < endDate)
+                                         .Where(p => p.Status == PaymentEnums.Success
+                                                  && p.PaymentDate >= startDate
+                                                  && p.PaymentDate < endDate)
                                          .ToListAsync();
             return new RevenueDailyStatisticsDto
             {
                 Date = startDate,
-                Revenue = payments.Sum(p => p.Amount),
+                Revenue = payments.Sum(p => p.PaymentType == PaymentTypeEnums.Refund ? -p.Amount : p.Amount),
                 PaymentCount = payments.Count
             };
         }
@@ -42,20 +43,21 @@ namespace HotelManagement.Services
                 throw new BadRequestException("Ngày bắt đầu không được lớn hơn ngày kết thúc!");
             var endExclusive = endDate.AddDays(1);
             var payments = await _context.Payments
-                                         .Where(p => p.CreateAt >= startDate 
-                                                  && p.CreateAt < endExclusive)
+                                         .Where(p => p.Status == PaymentEnums.Success
+                                                  && p.PaymentDate >= startDate 
+                                                  && p.PaymentDate < endExclusive)
                                          .ToListAsync();
             var result = new List<RevenueDailyStatisticsDto>();
             for (var date = startDate; date <= endDate; date = date.AddDays(1))
             {
                 var nextDate = date.AddDays(1);
-                var dailyPayments = payments.Where(p => p.CreateAt >= date 
-                                                && p.CreateAt < nextDate)
+                var dailyPayments = payments.Where(p => p.PaymentDate >= date 
+                                                && p.PaymentDate < nextDate)
                                             .ToList();
                 result.Add(new RevenueDailyStatisticsDto
                 {
                     Date = date,
-                    Revenue = dailyPayments.Sum(p => p.Amount),
+                    Revenue = dailyPayments.Sum(p => p.PaymentType == PaymentTypeEnums.Refund ? -p.Amount : p.Amount),
                     PaymentCount = dailyPayments.Count
                 });
             }
@@ -67,13 +69,14 @@ namespace HotelManagement.Services
             var startDate = new DateTime( month.Year,month.Month,1);
             var endDate = startDate.AddMonths(1);
             var payments = await _context.Payments
-                                         .Where(p => p.CreateAt >= startDate
-                                                  && p.CreateAt < endDate)
+                                         .Where(p => p.Status == PaymentEnums.Success
+                                                  && p.PaymentDate >= startDate
+                                                  && p.PaymentDate < endDate)
                                          .ToListAsync();
             return new RevenueMonthlyStatisticsDto
             {
                 Month = startDate,
-                Revenue = payments.Sum(p => p.Amount),
+                Revenue = payments.Sum(p => p.PaymentType == PaymentTypeEnums.Refund ? -p.Amount : p.Amount),
                 PaymentCount = payments.Count
             };
         }
@@ -85,20 +88,21 @@ namespace HotelManagement.Services
             if (currentMonth > lastMonth)
                 throw new BadRequestException("Tháng bắt đầu không được lớn hơn tháng kết thúc!");
             var payments = await _context.Payments
-                                         .Where(p => p.CreateAt >= currentMonth 
-                                                  && p.CreateAt < lastMonth.AddMonths(1))
+                                         .Where(p => p.Status == PaymentEnums.Success
+                                                  && p.PaymentDate >= currentMonth 
+                                                  && p.PaymentDate < lastMonth.AddMonths(1))
                                          .ToListAsync();
             var result = new List<RevenueMonthlyStatisticsDto>();
             while (currentMonth <= lastMonth)
             {
                 var nextMonth = currentMonth.AddMonths(1);
-                var monthlyPayments = payments.Where(p => p.CreateAt >= currentMonth 
-                                                  && p.CreateAt < nextMonth)
+                var monthlyPayments = payments.Where(p => p.PaymentDate >= currentMonth 
+                                                  && p.PaymentDate < nextMonth)
                                               .ToList();
                 result.Add(new RevenueMonthlyStatisticsDto
                 {
                     Month = currentMonth,
-                    Revenue = monthlyPayments.Sum(p => p.Amount),
+                    Revenue = monthlyPayments.Sum(p => p.PaymentType == PaymentTypeEnums.Refund ? -p.Amount : p.Amount),
                     PaymentCount = monthlyPayments.Count
                 });
                 currentMonth = nextMonth;
@@ -120,6 +124,7 @@ namespace HotelManagement.Services
             var occupiedRooms = await _context.BookingDetails
                                              .Where(bd => bd.Booking!.IsDeleted == ActiveEnums.Active 
                                                  && bd.Booking.Status != BookingEnums.Cancelled 
+                                                 && bd.Booking.Status != BookingEnums.Rejected
                                                  && bd.Booking.ExpectedCheckIn < endDate 
                                                  && bd.Booking.ExpectedCheckOut > startDate
                                             )
@@ -148,6 +153,7 @@ namespace HotelManagement.Services
             var bookings = await _context.BookingDetails
                                          .Where(bd => bd.Booking!.IsDeleted == ActiveEnums.Active 
                                              && bd.Booking.Status != BookingEnums.Cancelled
+                                             && bd.Booking.Status != BookingEnums.Rejected
                                              && bd.Booking.ExpectedCheckIn < endDate.AddDays(1) 
                                              && bd.Booking.ExpectedCheckOut > startDate)
                                          .Select(bd => new
@@ -191,6 +197,7 @@ namespace HotelManagement.Services
             var bookings = await _context.BookingDetails
                                          .Where(bd => bd.Booking!.IsDeleted == ActiveEnums.Active 
                                              && bd.Booking.Status != BookingEnums.Cancelled 
+                                             && bd.Booking.Status != BookingEnums.Rejected
                                              && bd.Booking.ExpectedCheckIn < endDate
                                              && bd.Booking.ExpectedCheckOut > startDate)
                                          .Select(bd => new

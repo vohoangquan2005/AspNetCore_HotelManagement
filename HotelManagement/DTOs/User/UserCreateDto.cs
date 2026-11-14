@@ -19,6 +19,5 @@ namespace HotelManagement.DTOs.User
         public DateTime? DateOfBirth { get; set; } // Ngày sinh
         [Required(ErrorMessage = "Vui lòng nhập số điện thoại!")]
         public string? PhoneNumber { get; set; }      // Số điện thoại
-        public string? Avatar { get; set; }     // Ảnh đại diện
     }
 }

@@ -4,6 +4,7 @@ using HotelManagement.DTOs.User;
 using HotelManagement.Enums;
 using HotelManagement.Exceptions;
 using HotelManagement.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace HotelManagement.Services
@@ -12,10 +13,19 @@ namespace HotelManagement.Services
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
-        public UserService(AppDbContext context, AuditLogService auditLogService)
+        private readonly CloudinaryService _cloudinaryService;
+        private readonly ILogger<UserService> _logger;
+
+        public UserService(
+            AppDbContext context,
+            AuditLogService auditLogService,
+            CloudinaryService cloudinaryService,
+            ILogger<UserService> logger)
         {
             _context = context;
             _auditLogService = auditLogService;
+            _cloudinaryService = cloudinaryService;
+            _logger = logger;
         }
         // Chuyển User -> UserResponseDto
         private UserResponseDto MapToResponseDto(User user)
@@ -38,7 +48,7 @@ namespace HotelManagement.Services
             };
         }
         // Chuyển UserCreateDto -> User
-        private User MapToEntity(UserCreateDto dto)
+        private User MapToEntity(UserCreateDto dto, string? avatarUrl)
         {
             return new User
             {
@@ -49,7 +59,7 @@ namespace HotelManagement.Services
                 Gender = dto.Gender,
                 DateOfBirth = dto.DateOfBirth,
                 PhoneNumber = dto.PhoneNumber,
-                Avatar = dto.Avatar
+                Avatar = avatarUrl
             };
         }
         // Cập nhật User từ UserUpdateDto
@@ -63,7 +73,6 @@ namespace HotelManagement.Services
             user.Gender = dto.Gender;
             user.DateOfBirth = dto.DateOfBirth;
             user.PhoneNumber = dto.PhoneNumber;
-            user.Avatar = dto.Avatar;
         }
         // ===========================================================
         // =                         VALIDATE                        =
@@ -161,6 +170,48 @@ namespace HotelManagement.Services
             customer.CCCD = dto.CCCD;
             customer.Nationality = dto.Nationality;
         }
+        private async Task TryDeleteUploadedAvatarAsync(string? avatarUrl)
+        {
+            if (string.IsNullOrWhiteSpace(avatarUrl))
+            {
+                return;
+            }
+
+            try
+            {
+                await _cloudinaryService.DeleteImageAsync(
+                    avatarUrl,
+                    CloudinaryService.UserAvatarFolder);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Failed to clean up a newly uploaded user avatar after a database failure.");
+            }
+        }
+
+        private async Task TryDeleteOldAvatarAsync(string? avatarUrl)
+        {
+            if (string.IsNullOrWhiteSpace(avatarUrl))
+            {
+                return;
+            }
+
+            try
+            {
+                await _cloudinaryService.DeleteImageAsync(
+                    avatarUrl,
+                    CloudinaryService.UserAvatarFolder);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "User data was saved, but the old Cloudinary avatar could not be deleted.");
+            }
+        }
+
         // ===========================================================
         // =                           CRUD                          =
         // ===========================================================
@@ -224,119 +275,188 @@ namespace HotelManagement.Services
         // Create
         public async Task<UserResponseDto> CreateAsync(UserCreateRequestDto request)
         {
-            await using var transaction = _context.Database.BeginTransaction();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            string? uploadedAvatarUrl = null;
+
             try
             {
-                // Lấy Role đang Active
                 var role = await GetActiveRole(request.User.RoleId);
-                // Validate User
                 await EmailExists(request.User.Email!);
                 await PhoneNumberExists(request.User.PhoneNumber);
                 CheckDateOfBirth(request.User.DateOfBirth);
-                // Tạo User
-                var user = MapToEntity(request.User);
+
+                if (request.Avatar is { Length: > 0 })
+                {
+                    uploadedAvatarUrl = await _cloudinaryService.UploadImageAsync(
+                        request.Avatar,
+                        CloudinaryService.UserAvatarFolder);
+                }
+
+                var user = MapToEntity(request.User, uploadedAvatarUrl);
                 await _context.Users.AddAsync(user);
                 await _context.SaveChangesAsync();
-                // Chỉ tạo Customer khi Role là Customer
+
                 if (role.RoleName == "Customer")
                 {
                     if (request.Customer is null)
+                    {
                         throw new BadRequestException("Vui lòng cung cấp thông tin khách hàng!");
+                    }
+
                     await CreateCustomer(user.UserId, request.Customer);
                 }
+
                 await _context.SaveChangesAsync();
-                await _auditLogService.LogAsync(AuditLogEnums.Create,
-                                                "User",
-                                                user.UserId,
-                                                null,
-                                                $"FullName: {user.FullName}, " +
-                                                $"Email: {user.Email}, " +
-                                                $"RoleId: {user.RoleId}, " +
-                                                $"PhoneNumber: {user.PhoneNumber}" +
-                                                (role.RoleName == "Customer" ? $", CCCD: {request.Customer?.CCCD}, " 
-                                                                             + $"Nationality: {request.Customer?.Nationality}"
-                                                                             : ""));
+                await _auditLogService.LogAsync(
+                    AuditLogEnums.Create,
+                    "User",
+                    user.UserId,
+                    null,
+                    $"FullName: {user.FullName}, "
+                    + $"Email: {user.Email}, "
+                    + $"RoleId: {user.RoleId}, "
+                    + $"PhoneNumber: {user.PhoneNumber}"
+                    + (role.RoleName == "Customer"
+                        ? $", CCCD: {request.Customer?.CCCD}, "
+                            + $"Nationality: {request.Customer?.Nationality}"
+                        : ""));
+
+                var response = await GetByIdAsync(user.UserId);
                 await transaction.CommitAsync();
-                return (await GetByIdAsync(user.UserId))!;
+                return response!;
             }
             catch
             {
                 await transaction.RollbackAsync();
+                await TryDeleteUploadedAvatarAsync(uploadedAvatarUrl);
                 throw;
             }
-            
         }
+
         // Update
-        public async Task<UserResponseDto?> UpdateAsync(int id, UserUpdateRequestDto request)
+        public async Task<UserResponseDto?> UpdateAsync(
+            int id,
+            UserUpdateRequestDto request)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
+            string? uploadedAvatarUrl = null;
+            string? oldAvatarUrl = null;
+
             try
             {
                 var user = await _context.Users
-                                         .FirstOrDefaultAsync(u => u.UserId == id 
-                                                                && u.IsDeleted == ActiveEnums.Active);
-                if (user is null) return null;
-                // Validate User
+                    .FirstOrDefaultAsync(
+                        current => current.UserId == id
+                            && current.IsDeleted == ActiveEnums.Active);
+
+                if (user is null)
+                {
+                    return null;
+                }
+
                 await EmailExists(request.User.Email!, id);
                 await PhoneNumberExists(request.User.PhoneNumber, id);
                 CheckDateOfBirth(request.User.DateOfBirth);
-                // Lấy Role mới
+
                 var newRole = await GetActiveRole(request.User.RoleId);
-                // Role mới là Customer
                 if (newRole.RoleName == "Customer")
                 {
                     if (request.Customer is null)
+                    {
                         throw new BadRequestException("Vui lòng cung cấp thông tin khách hàng!");
+                    }
+
                     await UpdateCustomer(id, request.Customer);
                 }
-                // Nếu Role mới không phải Customer:
-                var oldValue = $"FullName: {user.FullName}, " +
-                               $"Email: {user.Email}, " +
-                               $"RoleId: {user.RoleId}, " +
-                               $"IsLocked: {user.IsLocked}, " +
-                               $"Gender: {user.Gender}, " +
-                               $"DateOfBirth: {user.DateOfBirth}, " +
-                               $"PhoneNumber: {user.PhoneNumber}, " +
-                               $"Avatar: {user.Avatar}";
-                // Cập nhật User
+
+                var oldValue = $"FullName: {user.FullName}, "
+                    + $"Email: {user.Email}, "
+                    + $"RoleId: {user.RoleId}, "
+                    + $"IsLocked: {user.IsLocked}, "
+                    + $"Gender: {user.Gender}, "
+                    + $"DateOfBirth: {user.DateOfBirth}, "
+                    + $"PhoneNumber: {user.PhoneNumber}, "
+                    + $"Avatar: {user.Avatar}";
+
+                oldAvatarUrl = user.Avatar;
+                if (request.Avatar is { Length: > 0 })
+                {
+                    uploadedAvatarUrl = await _cloudinaryService.UploadImageAsync(
+                        request.Avatar,
+                        CloudinaryService.UserAvatarFolder);
+                }
+
                 UpdateEntity(user, request.User);
+                if (uploadedAvatarUrl is not null)
+                {
+                    user.Avatar = uploadedAvatarUrl;
+                }
+
                 await _context.SaveChangesAsync();
-                var newValue = $"FullName: {user.FullName}, " +
-                               $"Email: {user.Email}, " +
-                               $"RoleId: {user.RoleId}, " +
-                               $"IsLocked: {user.IsLocked}, " +
-                               $"Gender: {user.Gender}, " +
-                               $"DateOfBirth: {user.DateOfBirth}, " +
-                               $"PhoneNumber: {user.PhoneNumber}, " +
-                               $"Avatar: {user.Avatar}";
-                await _auditLogService.LogAsync(AuditLogEnums.Update,
-                                                "User",
-                                                user.UserId,
-                                                oldValue,
-                                                newValue);
+
+                var newValue = $"FullName: {user.FullName}, "
+                    + $"Email: {user.Email}, "
+                    + $"RoleId: {user.RoleId}, "
+                    + $"IsLocked: {user.IsLocked}, "
+                    + $"Gender: {user.Gender}, "
+                    + $"DateOfBirth: {user.DateOfBirth}, "
+                    + $"PhoneNumber: {user.PhoneNumber}, "
+                    + $"Avatar: {user.Avatar}";
+
+                await _auditLogService.LogAsync(
+                    AuditLogEnums.Update,
+                    "User",
+                    user.UserId,
+                    oldValue,
+                    newValue);
+
                 await transaction.CommitAsync();
-                return await GetByIdAsync(id);
             }
             catch
             {
                 await transaction.RollbackAsync();
+                await TryDeleteUploadedAvatarAsync(uploadedAvatarUrl);
                 throw;
             }
+
+            var response = await GetByIdAsync(id);
+            if (uploadedAvatarUrl is not null
+                && !string.Equals(oldAvatarUrl, uploadedAvatarUrl, StringComparison.Ordinal))
+            {
+                await TryDeleteOldAvatarAsync(oldAvatarUrl);
+            }
+
+            return response;
         }
+
         // Delete
         public async Task<bool> DeleteAsync(int id)
         {
             var user = await _context.Users
-                                     .FirstOrDefaultAsync(u => u.UserId == id
-                                                             &&u.IsDeleted == ActiveEnums.Inactive);    
-            if (user is null) return false;
-            var customer = await _context.Customers.AnyAsync(c => c.UserId == id);
+                .FirstOrDefaultAsync(
+                    current => current.UserId == id
+                        && current.IsDeleted == ActiveEnums.Inactive);
+
+            if (user is null)
+            {
+                return false;
+            }
+
+            var customer = await _context.Customers.AnyAsync(item => item.UserId == id);
             if (customer)
-                throw new BadRequestException("Người dùng đang có thông tin khách hàng. Không thể xóa!");
+            {
+                throw new BadRequestException(
+                    "Người dùng đang có thông tin khách hàng. Không thể xóa!");
+            }
+
+            var avatarUrl = user.Avatar;
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
+
+            await TryDeleteOldAvatarAsync(avatarUrl);
             return true;
         }
+
         // Xóa tạm
         public async Task<UserResponseDto?> SoftDeleteAsync(int id)
         {

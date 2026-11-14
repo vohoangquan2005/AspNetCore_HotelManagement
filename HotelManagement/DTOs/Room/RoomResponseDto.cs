@@ -1,5 +1,7 @@
 ﻿using HotelManagement.Enums;
 
+using HotelManagement.DTOs.RoomImage;
+
 namespace HotelManagement.DTOs.Room
 {
     public class RoomResponseDto
@@ -16,5 +18,6 @@ namespace HotelManagement.DTOs.Room
         public ActiveEnums IsDeleted { get; set; } // Dùng để xóa tạm
         public DateTime? CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
+        public List<RoomImageResponseDto> RoomImages { get; set; } = new();
     }
 }

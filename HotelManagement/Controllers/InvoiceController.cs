@@ -2,6 +2,7 @@
 using HotelManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HotelManagement.Controllers
 {
@@ -15,12 +16,30 @@ namespace HotelManagement.Controllers
         {
             _invoiceService = invoiceService;
         }
+        private int? CurrentCustomerId => int.TryParse(User.FindFirst("CustomerId")?.Value, out var id) ? id : null;
+        private int? CurrentUserId => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
         [Authorize(Roles = "Admin,Staff")]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var invoices = await _invoiceService.GetAllAsync();
             return Ok(invoices);
+        }
+        [Authorize(Roles = "Customer")]
+        [HttpGet("my-invoices")]
+        public async Task<IActionResult> GetMyInvoices()
+        {
+            var customerId = CurrentCustomerId;
+            return customerId is null ? Unauthorized() : Ok(await _invoiceService.GetMyInvoicesAsync(customerId.Value));
+        }
+        [Authorize(Roles = "Customer")]
+        [HttpGet("my-invoices/{id:int}")]
+        public async Task<IActionResult> GetMyInvoiceById(int id)
+        {
+            var customerId = CurrentCustomerId;
+            if (customerId is null) return Unauthorized();
+            var invoice = await _invoiceService.GetMyInvoiceByIdAsync(id, customerId.Value);
+            return invoice is null ? NotFound() : Ok(invoice);
         }
         [Authorize(Roles = "Admin,Staff")]
         [HttpGet("{id}")]
@@ -34,7 +53,7 @@ namespace HotelManagement.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(InvoiceCreateDto dto)
         {
-            var createInvoice = await _invoiceService.CreateAsync(dto);
+            var createInvoice = await _invoiceService.CreateAsync(dto, CurrentUserId);
             return CreatedAtAction(nameof(GetById),
                                    new { id = createInvoice.InvoiceId },
                                    createInvoice);

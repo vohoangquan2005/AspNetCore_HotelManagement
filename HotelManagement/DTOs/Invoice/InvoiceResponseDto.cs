@@ -7,6 +7,13 @@ namespace HotelManagement.DTOs.Invoice
         public int InvoiceId { get; set; }
         public int BookingId { get; set; }
         public string? CustomerName { get; set; }
+        public string? CustomerCCCD { get; set; }
+        public string? CustomerNationality { get; set; }
+        public DateTime? ExpectedCheckIn { get; set; }
+        public DateTime? ExpectedCheckOut { get; set; }
+        public DateTime? ActualCheckIn { get; set; }
+        public DateTime? ActualCheckOut { get; set; }
+        public List<InvoiceLineItemDto> LineItems { get; set; } = new();
         public decimal SubTotal { get; set; }   // Tiền chưa tính khuyến mãi và thuế
         public decimal TaxAmount { get; set; }  // Tiền thuế
         public decimal DiscountAmount { get; set; } // Số tiền khuyến mãi

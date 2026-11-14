@@ -103,10 +103,22 @@ builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<FavoriteRoomService>();
 builder.Services.AddScoped<CloudinaryService>();    // Cloud Service
 builder.Services.AddScoped<StatisticsService>();    // Statistics
+builder.Services.AddScoped<DashboardService>();
 // Auditlog Service
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<AuditLogService>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
@@ -125,6 +137,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseRouting();
+
+// Kích hoạt CORS cho frontend Next.js
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

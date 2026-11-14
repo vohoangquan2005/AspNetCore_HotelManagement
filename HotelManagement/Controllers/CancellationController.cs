@@ -2,6 +2,7 @@
 using HotelManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HotelManagement.Controllers
 {
@@ -14,6 +15,14 @@ namespace HotelManagement.Controllers
         public CancellationController(CancellationService cancellationService)
         {
             _cancellationService = cancellationService;
+        }
+        [Authorize(Roles = "Customer")]
+        [HttpPost("my")]
+        public async Task<IActionResult> CreateForCurrentCustomer(CancellationCreateDto dto)
+        {
+            if (!int.TryParse(User.FindFirst("CustomerId")?.Value, out var customerId)) return Unauthorized();
+            var cancellation = await _cancellationService.CreateForCustomerAsync(dto, customerId);
+            return CreatedAtAction(nameof(GetById), new { id = cancellation.CancellationId }, cancellation);
         }
         [Authorize(Roles = "Admin,Staff")]
         [HttpGet]

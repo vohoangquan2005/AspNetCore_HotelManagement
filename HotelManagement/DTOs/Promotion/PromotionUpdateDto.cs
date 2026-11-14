@@ -10,9 +10,10 @@ namespace HotelManagement.DTOs.Promotion
         [Required(ErrorMessage = "Vui lòng nhập tên khuyến mãi!")]
         [StringLength(100, ErrorMessage = "Tên khuyến mãi không vượt quá 100 ký tự!")]
         public string? PromotionName { get; set; }
-        [Required(ErrorMessage = "Vui lòng nhập phần trăm khuyến mãi!")]
-        [Range(0, 100, ErrorMessage = "Phần trăm khuyến mãi phải từ 0 đến 100!")]
-        public decimal? DiscountValue { get; set; } = 0;  // Giá trị giảm (%)
+        public HotelManagement.Enums.PromotionDiscountTypeEnums DiscountType { get; set; } = HotelManagement.Enums.PromotionDiscountTypeEnums.Percentage;
+        [Required(ErrorMessage = "Vui lòng nhập giá trị giảm giá!")]
+        [Range(0, double.MaxValue, ErrorMessage = "Giá trị khuyến mãi không được âm!")]
+        public decimal? DiscountValue { get; set; } = 0;
         [Range(0, double.MaxValue, ErrorMessage = "Số tiền tối thiểu không được âm!")]
         public decimal? MinAmount { get; set; } = 0;// Giá tiền tối thiểu mà khách hàng phải sử dụng để có thể áp dụng khuyến mãi
         [Range(0, double.MaxValue, ErrorMessage = "Số tiền giảm tối đa không được âm!")]
